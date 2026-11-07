@@ -57,8 +57,7 @@
   margin: 0;
   max-width: 38ch;
   justify-self: end;
-  padding: 0 0 6px 1rem;
-  border-left: 2px solid var(--eco-primary);
+  padding: 0 0 6px;
   font-size: clamp(1rem, 1.35vw, 1.15rem);
   line-height: 1.6;
   font-weight: 500;
@@ -175,19 +174,6 @@
 }
 @media (max-width: 760px) { .sim-nums { grid-template-columns: minmax(0, 1fr); } }
 
-/* ── Kabel listrik yang tumbuh di tepi kiri (padanan "vine") ─── */
-.pvine { display: none; }
-@media (min-width: 1240px) {
-  .pvine { display: block; position: sticky; top: 0; height: 0; z-index: 4; pointer-events: none; }
-  .pvine-in { position: absolute; left: 6px; top: 0; width: min(46px, 6vh); height: 100vh; }
-  .pvine-in svg { width: 100%; height: 100%; display: block; overflow: visible; }
-}
-.pv-track { fill: none; stroke: rgba(138, 106, 74, 0.28); stroke-width: 1.6; stroke-dasharray: 2 5; stroke-linecap: round; }
-.pv-wire { fill: none; stroke: var(--metal-dark); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.pv-bulb { fill: var(--border-medium); transform-box: fill-box; transform-origin: 50% 50%; transform: scale(0.6); transition: transform 0.5s cubic-bezier(0.3, 1.7, 0.5, 1), fill 0.3s ease; }
-.pv-bulb.on { fill: var(--solar-primary); transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 158, 44, 0.8)); }
-.pv-bulb.top.on { fill: var(--eco-primary); filter: drop-shadow(0 0 6px rgba(47, 191, 113, 0.9)); }
-
 /* ── Penutup dan footer ──────────────────────────────────────── */
 .close { border-top: 1px solid var(--border-medium); padding-block: clamp(80px, 11vw, 150px); text-align: center; }
 .close-title {
@@ -209,5 +195,29 @@
 .bal-btn.main:hover { filter: brightness(1.2); }
 .bal-btn.line { background: transparent; color: var(--metal-dark); border-color: rgba(31, 41, 55, 0.3); }
 .bal-btn.line:hover { border-color: var(--eco-dark); }
-.site-footer { position: relative; z-index: 3; background: #0f2820; color: #cfe8d9; }
-.sf-body { background: #0f2820; padding: 8px 0 28px; }
+.site-footer { position: relative; z-index: 3; background: #0f2820; color: #cfe8d9; overflow: hidden; }
+.sf-body { padding: clamp(48px, 7vw, 88px) 0 0; }
+.sf-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 40px clamp(24px, 4vw, 64px); }
+.sf-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.01em; color: #fff; text-decoration: none; }
+.sf-mark { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--eco-primary); color: #fff; }
+.sf-tag { margin: 18px 0 0; max-width: 30ch; font-size: 1.05rem; line-height: 1.55; color: #e6f3ea; font-weight: 500; }
+.sf-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 11px 20px; border-radius: 999px; background: var(--eco-primary); color: #06210f; font-weight: 800; font-size: 14px; text-decoration: none; transition: transform .15s ease, filter .15s ease; }
+.sf-cta:hover { filter: brightness(1.08); }
+.sf-cta:active { transform: scale(.96); }
+.sf-cta:focus-visible, .sf-col a:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
+.sf-col h3 { margin: 4px 0 16px; font: 700 11px var(--font-mono); letter-spacing: .16em; text-transform: uppercase; color: #6fcf9a; }
+.sf-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.sf-col a { color: #cfe8d9; text-decoration: none; font-size: 15px; transition: color .15s ease; }
+.sf-col a:hover { color: #fff; }
+.sf-col p { margin: 0; font-size: 14px; line-height: 1.65; color: #9fc4ae; max-width: 32ch; }
+.sf-word {
+  margin: clamp(40px, 6vw, 72px) 0 0; font-family: var(--font-display); font-weight: 800; line-height: .78; letter-spacing: -0.06em;
+  font-size: min(15.5vw, 14rem); text-align: center; user-select: none; white-space: nowrap;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .2) 0%, rgba(255, 255, 255, .02) 85%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin-bottom: -0.1em;
+}
+.sf-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; padding: 20px 0 24px; border-top: 1px solid rgba(255, 255, 255, .12); font-size: 13px; color: #8fb6a0; position: relative; background: #0f2820; }
+.sf-bar a { color: #cfe8d9; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.sf-bar a:hover { color: #fff; }
+@media (max-width: 860px) { .sf-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sf-grid > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .sf-grid { grid-template-columns: minmax(0, 1fr); } }

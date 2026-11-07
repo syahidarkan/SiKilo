@@ -1,8 +1,15 @@
 'use client';
 
 import { ArrowRight, ArrowUp, UserPlus, Zap } from 'lucide-react';
-import { REGISTER_URL } from '@/lib/waskita';
+import { DASHBOARD_URL, REGISTER_URL } from '@/lib/waskita';
 import Reveal from '@/components/Reveal';
+
+const EXPLORE_LINKS = [
+  { label: 'Cerita', href: '#sehari' },
+  { label: 'Simulator', href: '#simulator-section' },
+  { label: 'Fitur', href: '#fitur' },
+  { label: 'Tanya jawab', href: '#faq' },
+];
 
 const PRODUCT_LINKS = [
   { label: 'Pembacaan beban', href: '#fitur' },
@@ -45,51 +52,50 @@ export default function CtaFooter() {
 
       <footer className="site-footer">
         <div className="sf-body">
-          <div className="max-w-5xl mx-auto px-4 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+          <div className="sheet-w">
+            <div className="sf-grid">
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--eco-primary)', color: '#fff' }}>
-                    <Zap size={14} fill="currentColor" />
-                  </div>
-                  <span className="font-black text-sm tracking-tight" style={{ color: '#fff' }}>
-                    WAS<span style={{ color: 'var(--eco-primary)' }}>KITA</span>
-                  </span>
-                </div>
-                <p className="text-xs leading-relaxed" style={{ color: '#6FA687' }}>
-                  Pengatur energi berbasis AI dan penentu ukuran PLTS untuk UMKM Indonesia.
-                </p>
+                <a className="sf-brand" href="#top">
+                  <span className="sf-mark"><Zap size={16} fill="currentColor" /></span>
+                  WASKITA
+                </a>
+                <p className="sf-tag">Membaca listrik tiap mesin, menggeser jadwalnya ke jam matahari, dan menyiapkan rapor untuk bank.</p>
+                <a className="sf-cta" href="#simulator-section">
+                  Coba simulator <ArrowRight size={15} />
+                </a>
               </div>
 
-              <div>
-                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4C9A74' }}>Produk</p>
-                <ul className="space-y-1.5 text-xs" style={{ color: '#6FA687' }}>
-                  {PRODUCT_LINKS.map(({ label, href }) => (
-                    <li key={label}>
-                      <a href={href} className="transition-colors hover:text-green-400 focus-visible:text-green-400">
-                        {label}
-                      </a>
-                    </li>
+              <nav className="sf-col" aria-label="Jelajahi">
+                <h3>Jelajahi</h3>
+                <ul>
+                  {EXPLORE_LINKS.map(({ label, href }) => (
+                    <li key={label}><a href={href}>{label}</a></li>
                   ))}
                 </ul>
-              </div>
+              </nav>
 
-              <div>
-                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4C9A74' }}>Kemitraan</p>
-                <p className="text-xs leading-relaxed" style={{ color: '#6FA687' }}>
-                  Belum ada MoU resmi. Yang sedang dijajaki: Disperinaker Sukoharjo, UMKM binaan untuk uji coba, dan tenan energi inkubator UNS.
-                </p>
+              <nav className="sf-col" aria-label="Produk">
+                <h3>Produk</h3>
+                <ul>
+                  {PRODUCT_LINKS.map(({ label, href }) => (
+                    <li key={label}><a href={href}>{label}</a></li>
+                  ))}
+                  <li><a href={DASHBOARD_URL}>Masuk ke dasbor</a></li>
+                </ul>
+              </nav>
+
+              <div className="sf-col">
+                <h3>Kemitraan</h3>
+                <p>Belum ada MoU resmi. Yang sedang dijajaki: Disperinaker Sukoharjo, UMKM binaan untuk uji coba, dan tenan energi inkubator UNS.</p>
               </div>
             </div>
 
-            <div
-              className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs"
-              style={{ borderTop: '1px solid #1D3A2E', color: '#6FA687' }}
-            >
+            <div className="sf-word" aria-hidden="true">WASKITA</div>
+          </div>
+          <div className="sf-bar">
+            <div className="sheet-w" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '10px 24px', width: '100%' }}>
               <span>© 2026 WASKITA · UNS Innovation Hackathon · Energy Track Sub-tema C</span>
-              <a href="#top" className="cta-top">
-                Kembali ke atas <ArrowUp size={13} />
-              </a>
+              <a href="#top">Kembali ke atas <ArrowUp size={13} /></a>
             </div>
           </div>
         </div>

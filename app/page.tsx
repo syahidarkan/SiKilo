@@ -1,5 +1,4 @@
 import Navbar from '@/components/Navbar';
-import PowerVine from '@/components/PowerVine';
 import StoryScene from '@/components/story/StoryScene';
 import SimulatorSection from '@/components/sections/SimulatorSection';
 import FeatureCards from '@/components/sections/FeatureCards';
@@ -16,7 +15,6 @@ export default function Home() {
       </section>
 
       <div className="sheet">
-        <PowerVine />
         {/* ── Simulator Right-Sizing ─────────────────────────────── */}
         <SimulatorSection />
 
