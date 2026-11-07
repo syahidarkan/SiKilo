@@ -33,10 +33,8 @@ function WordReveal({ text, active }: { text: string; active: boolean }) {
     timerRef.current = setInterval(() => {
       idx++;
       setRevealed(idx);
-      if (idx >= words.length) {
-        if (timerRef.current) clearInterval(timerRef.current);
-      }
-    }, 48);
+      if (idx >= words.length && timerRef.current) clearInterval(timerRef.current);
+    }, 44);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [active, text]);
 
@@ -47,7 +45,7 @@ function WordReveal({ text, active }: { text: string; active: boolean }) {
           key={i}
           style={{
             opacity: i < revealed ? 1 : 0,
-            transition: 'opacity 0.12s',
+            transition: 'opacity 0.1s',
             marginRight: '0.25em',
             display: 'inline-block',
           }}
@@ -67,108 +65,172 @@ export default function FaqChat() {
     if (openIdx === i) { setOpenIdx(null); setTypingIdx(null); return; }
     setOpenIdx(i);
     setTypingIdx(null);
-    setTimeout(() => setTypingIdx(i), 420);
+    setTimeout(() => setTypingIdx(i), 400);
   }
 
   return (
-    <section className="py-20 md:py-28" style={{ background: 'var(--bg-paper)' }}>
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--eco-primary)' }}>
-            FAQ
-          </span>
-          <h2 className="text-3xl md:text-4xl font-bold mb-3" style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)' }}>
-            Tanya langsung Si Kilo
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--metal-mid)' }}>
-            Pertanyaan yang sering muncul, dijawab Si Kilo.
-          </p>
-        </div>
+    <section className="py-24 md:py-32" style={{ background: 'var(--bg-paper)' }}>
+      <div className="max-w-5xl mx-auto px-4">
 
-        <div className="space-y-4">
-          {FAQS.map((faq, i) => (
-            <div key={i} className="rounded-2xl overflow-hidden" style={{ border: '1.5px solid var(--border-soft)', background: 'var(--bg-surface)' }}>
-              {/* Question bubble (user) */}
-              <button
-                className="w-full flex items-start gap-3 p-4 md:p-5 text-left"
-                onClick={() => handleOpen(i)}
-                aria-expanded={openIdx === i}
+        {/* Two-column layout: info left, accordion right */}
+        <div className="grid md:grid-cols-[1fr_1.6fr] gap-12 md:gap-16 items-start">
+
+          {/* Left — sticky info */}
+          <div className="md:sticky md:top-24">
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase mb-5 px-3 py-1 rounded-full"
+              style={{ background: 'var(--solar-light)', color: 'var(--solar-dark)' }}
+            >
+              ⚡ FAQ
+            </span>
+            <h2
+              className="text-3xl md:text-4xl font-extrabold leading-tight mb-4"
+              style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
+            >
+              Tanya langsung<br /> Si Kilo
+            </h2>
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--metal-mid)' }}>
+              Pertanyaan yang sering muncul, dijawab Si Kilo secara langsung.
+            </p>
+
+            {/* Si Kilo avatar card */}
+            <div
+              className="inline-flex items-center gap-3 px-4 py-3 rounded-2xl"
+              style={{ background: 'var(--bg-surface)', border: '1.5px solid var(--border-soft)' }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold shrink-0"
+                style={{ background: 'linear-gradient(135deg, var(--solar-primary) 0%, var(--eco-primary) 100%)', color: '#fff' }}
               >
-                {/* User avatar */}
-                <div
-                  className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold"
-                  style={{ background: 'var(--eco-primary)', color: '#fff', marginTop: '2px' }}
-                >
-                  U
-                </div>
-                <div className="flex-1">
-                  <div
-                    className="inline-block rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm font-medium"
-                    style={{ background: 'var(--border-soft)', color: 'var(--metal-dark)' }}
-                  >
-                    {faq.q}
-                  </div>
-                </div>
-                <svg
-                  className="shrink-0 mt-2 transition-transform"
-                  style={{ transform: openIdx === i ? 'rotate(180deg)' : 'rotate(0deg)', color: 'var(--metal-light)' }}
-                  width="16" height="16" viewBox="0 0 16 16" fill="none"
-                >
-                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-
-              {/* Answer (Si Kilo) */}
-              {openIdx === i && (
-                <div className="px-4 md:px-5 pb-5">
-                  <div className="flex items-start gap-3">
-                    {/* Si Kilo avatar */}
-                    <div
-                      className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm font-bold"
-                      style={{ background: 'linear-gradient(135deg, var(--solar-primary) 0%, var(--eco-primary) 100%)', color: '#fff', marginTop: '2px' }}
-                    >
-                      ⚡
-                    </div>
-                    <div className="flex-1">
-                      {/* Typing indicator or answer */}
-                      {typingIdx !== i ? (
-                        <div
-                          className="inline-flex items-center gap-1 rounded-2xl rounded-tl-sm px-4 py-2.5"
-                          style={{ background: '#FFF3CD', border: '1px solid #FDE68A' }}
-                        >
-                          {[0, 1, 2].map((d) => (
-                            <span
-                              key={d}
-                              className="block rounded-full"
-                              style={{
-                                width: 6, height: 6,
-                                background: 'var(--solar-primary)',
-                                animation: `bounce 0.9s ease-in-out ${d * 0.15}s infinite`,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div
-                          className="rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed"
-                          style={{ background: '#FFF8EC', border: '1px solid #FDE68A', color: 'var(--metal-dark)' }}
-                        >
-                          <WordReveal text={faq.a} active={typingIdx === i} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+                ⚡
+              </div>
+              <div>
+                <p className="text-sm font-bold" style={{ color: 'var(--metal-dark)' }}>Si Kilo</p>
+                <p className="text-xs" style={{ color: 'var(--metal-light)' }}>AI Energy Dispatcher</p>
+              </div>
+              <div className="flex gap-0.5 ml-1">
+                {[0, 1, 2].map((d) => (
+                  <span
+                    key={d}
+                    className="block rounded-full"
+                    style={{
+                      width: 5, height: 5,
+                      background: 'var(--eco-primary)',
+                      animation: `pulse 1.2s ease-in-out ${d * 0.2}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-          ))}
+          </div>
+
+          {/* Right — FAQ accordion */}
+          <div className="space-y-3">
+            {FAQS.map((faq, i) => (
+              <div
+                key={i}
+                className="rounded-2xl overflow-hidden"
+                style={{
+                  border: `1.5px solid ${openIdx === i ? 'var(--border-medium)' : 'var(--border-soft)'}`,
+                  background: openIdx === i ? '#fff' : 'var(--bg-surface)',
+                  transition: 'background 0.2s, border-color 0.2s',
+                  boxShadow: openIdx === i ? '0 4px 20px -4px rgba(31,41,55,0.08)' : 'none',
+                }}
+              >
+                {/* Question (user bubble) */}
+                <button
+                  className="w-full flex items-start gap-3 p-4 md:p-5 text-left"
+                  onClick={() => handleOpen(i)}
+                  aria-expanded={openIdx === i}
+                >
+                  <div
+                    className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-xs font-bold"
+                    style={{ background: 'var(--border-medium)', color: 'var(--metal-mid)', marginTop: '1px' }}
+                  >
+                    U
+                  </div>
+                  <div className="flex-1">
+                    <div
+                      className="inline-block rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm font-medium text-left"
+                      style={{ background: 'var(--border-soft)', color: 'var(--metal-dark)' }}
+                    >
+                      {faq.q}
+                    </div>
+                  </div>
+                  <svg
+                    className="shrink-0 mt-2 transition-transform duration-200"
+                    style={{ transform: openIdx === i ? 'rotate(180deg)' : 'rotate(0deg)', color: 'var(--metal-light)' }}
+                    width="16" height="16" viewBox="0 0 16 16" fill="none"
+                  >
+                    <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                {/* Answer (Si Kilo bubble) */}
+                {openIdx === i && (
+                  <div className="px-4 md:px-5 pb-5">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-sm"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--solar-primary) 0%, var(--eco-primary) 100%)',
+                          color: '#fff',
+                          marginTop: '1px',
+                          fontSize: '14px',
+                        }}
+                      >
+                        ⚡
+                      </div>
+                      <div className="flex-1">
+                        {typingIdx !== i ? (
+                          /* Typing indicator */
+                          <div
+                            className="inline-flex items-center gap-1.5 rounded-2xl rounded-tl-sm px-4 py-3"
+                            style={{ background: 'var(--solar-light)', border: '1px solid var(--border-soft)' }}
+                          >
+                            {[0, 1, 2].map((d) => (
+                              <span
+                                key={d}
+                                className="block rounded-full"
+                                style={{
+                                  width: 6, height: 6,
+                                  background: 'var(--solar-primary)',
+                                  animation: `dot-bounce 0.9s ease-in-out ${d * 0.15}s infinite`,
+                                }}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          /* Answer text */
+                          <div
+                            className="rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed"
+                            style={{
+                              background: 'var(--solar-light)',
+                              border: '1px solid var(--border-soft)',
+                              color: 'var(--metal-dark)',
+                            }}
+                          >
+                            <WordReveal text={faq.a} active={typingIdx === i} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes bounce {
+        @keyframes dot-bounce {
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-5px); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
         }
       `}</style>
     </section>
