@@ -116,8 +116,8 @@ function buildTruck(g: THREE.Group): THREE.Group {
   hl2.position.set(1.2, 0.72, -0.5);
   truck.add(hl2);
 
-  // Face truck along -X (from positive X toward negative X)
-  truck.rotation.y = -Math.PI / 2;
+  // Face truck along +X (direction of travel: position.x loops -18→+18)
+  truck.rotation.y = 0;
   truck.position.set(0, 0.0, 6.8);
 
   g.add(truck);
@@ -145,8 +145,8 @@ export function buildEnv(scene: THREE.Scene): EnvRefs {
   }
 
   // ── Road Z 5.0→14.0, centre 9.5 ──────────────────────────────
-  const roadM = new THREE.MeshStandardMaterial({ color: 0x2B2F38, roughness: 0.95 });
-  g.add(box(50, 0.20, 9.0, roadM, 0, -0.10, 9.5));
+  const roadM = new THREE.MeshStandardMaterial({ color: 0x2B2F38, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -1 });
+  g.add(box(50, 0.18, 9.0, roadM, 0, -0.06, 9.5));
 
   // Kerb strip
   const kerbM = mat(0x888880, 0.8);

@@ -20,15 +20,15 @@ function lerp(a: number, b: number, t: number): number {
 // ── Camera keyframes (sp → target) ────────────────────────────────────────────
 interface CamKF { sp: number; lx: number; ly: number; lz: number; zoom: number }
 const CAM_KF: CamKF[] = [
-  { sp: 0.00, lx:  0.0,   ly: 2.0, lz: 2.0,  zoom: 0.88 },  // 0: overview
-  { sp: 0.17, lx: -9.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 1: kelontong shop
-  { sp: 0.30, lx: -11.75, ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 2: kelontong meter
-  { sp: 0.42, lx:  0.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 3: konveksi shop
-  { sp: 0.54, lx: -2.75,  ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 4: konveksi meter
-  { sp: 0.67, lx: +9.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 5: laundry shop
-  { sp: 0.79, lx: +6.25,  ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 6: laundry meter
-  { sp: 0.90, lx:  0.0,   ly: 2.5, lz: 2.0,  zoom: 0.95 },  // 7: finale
-  { sp: 1.00, lx:  0.0,   ly: 2.5, lz: 2.0,  zoom: 0.95 },  // anchor
+  { sp: 0.00, lx:  0.0,   ly: 2.0, lz: 1.0,  zoom: 0.90 },  // 0: overview
+  { sp: 0.17, lx: -9.0,   ly: 1.4, lz: 0.0,  zoom: 2.00 },  // 1: kelontong shop interior
+  { sp: 0.30, lx: -11.75, ly: 3.5, lz: 3.1,  zoom: 3.60 },  // 2: kelontong meter+cable
+  { sp: 0.42, lx:  0.0,   ly: 1.4, lz: 0.0,  zoom: 2.00 },  // 3: konveksi shop interior
+  { sp: 0.54, lx: -2.75,  ly: 3.5, lz: 3.1,  zoom: 3.60 },  // 4: konveksi meter+cable
+  { sp: 0.67, lx: +9.0,   ly: 1.4, lz: 0.0,  zoom: 2.00 },  // 5: laundry shop interior
+  { sp: 0.79, lx: +6.25,  ly: 3.5, lz: 3.1,  zoom: 3.60 },  // 6: laundry meter+cable
+  { sp: 0.90, lx:  0.0,   ly: 2.0, lz: 2.0,  zoom: 0.95 },  // 7: finale
+  { sp: 1.00, lx:  0.0,   ly: 2.0, lz: 2.0,  zoom: 0.95 },  // anchor
 ];
 
 function getCamTarget(sp: number): CamKF {
@@ -49,12 +49,12 @@ function getCamTarget(sp: number): CamKF {
 // ── Mascot waypoints per sub-beat (0–7) ───────────────────────────────────────
 const MASCOT_POS: [number, number, number][] = [
   [ 0.0,  0.53, 3.4],   // 0: trotoar center, shocked
-  [-9.0,  1.11, 1.5],   // 1: Kelontong counter, shocked
-  [-11.75,1.55, 2.0],   // 2: Kelontong meter, scanning
-  [-0.5,  1.11, 0.8],   // 3: Konveksi sewing table, shocked
-  [-2.75, 1.55, 2.0],   // 4: Konveksi meter, scanning
-  [ 9.0,  0.65, 1.8],   // 5: Laundry baskets, shocked
-  [ 6.25, 1.55, 2.0],   // 6: Laundry meter, scanning
+  [-9.0,  0.90, 1.0],   // 1: Kelontong inside counter, shocked
+  [-11.75,2.10, 2.5],   // 2: Kelontong meter wall — clamping cable
+  [ 0.0,  0.90, 1.0],   // 3: Konveksi sewing table, shocked
+  [-2.75, 2.10, 2.5],   // 4: Konveksi meter wall — clamping cable
+  [ 9.0,  0.65, 1.5],   // 5: Laundry baskets, shocked
+  [ 6.25, 2.10, 2.5],   // 6: Laundry meter wall — clamping cable
   [ 0.0,  0.53, 3.4],   // 7: trotoar center, happy
 ];
 
@@ -178,7 +178,7 @@ export default function HeroDioramaScene(): React.ReactElement {
       camera.top    =  D_BASE / zoom;
       camera.bottom = -D_BASE / zoom;
       camera.updateProjectionMatrix();
-      camera.position.set(lookAt.x + 13, lookAt.y + 11, lookAt.z + 13);
+      camera.position.set(lookAt.x + 11, lookAt.y + 7, lookAt.z + 11);
       camera.lookAt(lookAt);
     }
     updateCamera(currentLook, currentZoom);
@@ -213,6 +213,26 @@ export default function HeroDioramaScene(): React.ReactElement {
     scene.add(mascot.refs.root);
     mascot.refs.root.position.set(0, 0.53, 3.4);
     mascot.setMood('shocked');
+
+    // ── Steam particles (mascot shocked state) ───────────────
+    const STEAM_N = 24;
+    const steamPts   = new Float32Array(STEAM_N * 3);
+    const steamVelX  = new Float32Array(STEAM_N);
+    const steamVelZ  = new Float32Array(STEAM_N);
+    const steamT     = new Float32Array(STEAM_N);
+    for (let i = 0; i < STEAM_N; i++) {
+      steamT[i]    = Math.random();
+      steamVelX[i] = (Math.random() - 0.5) * 0.6;
+      steamVelZ[i] = (Math.random() - 0.5) * 0.6;
+    }
+    const steamGeo = new THREE.BufferGeometry();
+    steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPts, 3));
+    const steamMat = new THREE.PointsMaterial({
+      size: 0.14, color: 0xFFFFFF, transparent: true, opacity: 0.55,
+      depthWrite: false,
+    });
+    const steamPoints = new THREE.Points(steamGeo, steamMat);
+    scene.add(steamPoints);
 
     // ── Scroll tracking ───────────────────────────────────────────
     let rawProgress  = 0;
@@ -276,6 +296,42 @@ export default function HeroDioramaScene(): React.ReactElement {
       if (subBeat !== prevSubBeat) {
         mascot.setMood(MASCOT_MOODS[subBeat]);
         prevSubBeat = subBeat;
+      }
+
+      // ── Mascot scale: constant apparent size regardless of zoom ──
+      mascot.refs.root.scale.setScalar(0.90 / Math.max(currentZoom, 0.5));
+
+      // ── Arm clamping pose during scanning sub-beats ──────────────
+      const isClamping = subBeat === 2 || subBeat === 4 || subBeat === 6;
+      if (isClamping) {
+        mascot.refs.armRight.rotation.z = lerp(mascot.refs.armRight.rotation.z, -1.6, 0.06);
+        mascot.refs.armRight.rotation.x = lerp(mascot.refs.armRight.rotation.x,  0.8, 0.06);
+        // Press against the wall (stop Z at ~2.4)
+        currentMascotPos.z = Math.max(currentMascotPos.z, 2.35);
+      } else {
+        mascot.refs.armRight.rotation.z = lerp(mascot.refs.armRight.rotation.z, 0, 0.06);
+        mascot.refs.armRight.rotation.x = lerp(mascot.refs.armRight.rotation.x, 0, 0.06);
+      }
+
+      // ── Steam effect when shocked ────────────────────────────────
+      const isSteaming = MASCOT_MOODS[subBeat] === 'shocked';
+      steamPoints.visible = isSteaming;
+      if (isSteaming) {
+        const headY = currentMascotPos.y + 1.55 / Math.max(currentZoom, 0.5);
+        for (let i = 0; i < STEAM_N; i++) {
+          steamT[i] += delta * 0.9;
+          if (steamT[i] > 1) {
+            steamT[i] = 0;
+            steamPts[i * 3]     = currentMascotPos.x + (Math.random() - 0.5) * 0.3;
+            steamPts[i * 3 + 1] = headY;
+            steamPts[i * 3 + 2] = currentMascotPos.z + (Math.random() - 0.5) * 0.2;
+          }
+          steamPts[i * 3]     += steamVelX[i] * delta * 0.4;
+          steamPts[i * 3 + 1] += (0.9 + steamT[i] * 0.4) * delta;
+          steamPts[i * 3 + 2] += steamVelZ[i] * delta * 0.4;
+        }
+        steamMat.opacity = 0.4 + Math.sin(time * 4) * 0.1;
+        (steamPoints.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
       }
 
       // ── Mascot rotation: face the camera roughly ─────────────────

@@ -151,6 +151,32 @@ function buildMeterBox(cx: number, g: THREE.Group): { mesh: THREE.Mesh; indMesh:
   // Wall bracket
   g.add(box(0.08, 0.80, 0.08, mat(0x888888, 0.7, 0.3), mx - 0.26, my, mz - 0.04));
 
+  // Drop cable stub (from span area to meter) — visible segment near meter
+  const stubCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(mx, 4.80, 3.40),
+    new THREE.Vector3(mx, 3.60, 3.00),
+    new THREE.Vector3(mx, my + 0.5, mz + 0.05),
+  ]);
+  const stubGeo = new THREE.TubeGeometry(stubCurve, 12, 0.025, 5, false);
+  g.add(new THREE.Mesh(stubGeo, new THREE.MeshStandardMaterial({ color: 0x1A1A1A, roughness: 0.9 })));
+
+  // CT clamp ring (clamped on cable at y≈3.1)
+  const clampM = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.3, metalness: 0.65 });
+  const clampBody = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.028, 10, 20), clampM);
+  clampBody.position.set(mx, 3.10, 3.18);
+  clampBody.rotation.x = -0.42; // align with cable angle
+  g.add(clampBody);
+  // Sensor module on clamp
+  g.add(box(0.14, 0.09, 0.09, new THREE.MeshStandardMaterial({ color: 0x1E3A6A, roughness: 0.5, metalness: 0.3 }), mx + 0.14, 3.10, 3.18));
+  // Wire from sensor to meter
+  const wireCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(mx + 0.14, 3.10, 3.18),
+    new THREE.Vector3(mx + 0.14, 2.75, 2.70),
+    new THREE.Vector3(mx, my + 0.1, mz + 0.05),
+  ]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(wireCurve, 10, 0.012, 4, false),
+    new THREE.MeshStandardMaterial({ color: 0x2FBF71, roughness: 0.8 })));
+
   return {
     mesh: indMesh,
     indMesh,
@@ -362,17 +388,6 @@ function buildShell(
     // fallback: plain colored plank
     g.add(box(4.6, 0.55, 0.06, mat(0xFFF8E1, 0.6), cx, 3.72, 2.42));
   }
-
-  // Door frame
-  g.add(box(0.1, 2.5, 0.1, colM, cx - 0.68, 1.25, 2.37));
-  g.add(box(0.1, 2.5, 0.1, colM, cx + 0.68, 1.25, 2.37));
-  g.add(box(1.5, 0.1, 0.1, colM, cx, 2.55, 2.37));
-
-  // Door (glass)
-  const doorGlassM = new THREE.MeshStandardMaterial({
-    color: 0x90CAF9, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.5,
-  });
-  g.add(box(1.3, 2.4, 0.04, doorGlassM, cx, 1.2, 2.39));
 
   // Tile floor lines
   const tLineM = mat(0xBBB8B0, 0.9);
