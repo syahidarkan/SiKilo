@@ -3,6 +3,24 @@
    Panel hanya untuk objek, prosa langsung di atas kertas, struktur dari tipografi,
    garis tipis, dan satu kalimat kunci bergaris aksen.
    ═════════════════════════════════════════════════════════════════════════════ */
+/* Resep gradasi latar semua pita: hanya dua pendar bulat kecil dan tipis (mint dan kuning),
+   di sisi kiri dan kanan, seperti situs EJA. Pendar tidak pernah mendekati tepi atas dan bawah,
+   jadi sambungan antar pita mulus. --band-glow-alt menukar sisinya agar pita bersebelahan bergantian. */
+:root {
+  --glow-r: clamp(190px, 24vw, 330px);
+  --glow-mint: color-mix(in srgb, var(--eco-primary) 13%, transparent);
+  --glow-amber: color-mix(in srgb, var(--solar-primary) 15%, transparent);
+  --band-glow:
+    radial-gradient(circle var(--glow-r) at 22% 50%, var(--glow-mint), transparent),
+    radial-gradient(circle var(--glow-r) at 78% 50%, var(--glow-amber), transparent);
+  --band-glow-alt:
+    radial-gradient(circle var(--glow-r) at 78% 50%, var(--glow-mint), transparent),
+    radial-gradient(circle var(--glow-r) at 22% 50%, var(--glow-amber), transparent);
+}
+:root[data-theme='dark'] {
+  --glow-mint: color-mix(in srgb, var(--eco-primary) 8%, transparent);
+  --glow-amber: color-mix(in srgb, var(--solar-primary) 8%, transparent);
+}
 .sheet {
   position: relative;
   background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, var(--sheet-end) 100%);
@@ -163,13 +181,12 @@
   position: relative; isolation: isolate; overflow: hidden; text-align: center;
   padding-block: clamp(88px, 12vw, 164px);
   background:
-    radial-gradient(46% 46% at 10% 50%, color-mix(in srgb, var(--eco-primary) 26%, transparent), transparent 100%),
-    radial-gradient(46% 50% at 92% 78%, color-mix(in srgb, var(--solar-primary) 28%, transparent), transparent 100%),
+    var(--band-glow-alt),
     linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-paper) 50%, var(--bg-surface) 100%);
 }
-.close::before, .close::after { content: ''; position: absolute; z-index: -1; border-radius: 50%; filter: blur(70px); pointer-events: none; }
-.close::before { width: clamp(260px, 38vw, 520px); aspect-ratio: 1; left: -8%; top: 22%; background: color-mix(in srgb, var(--eco-primary) 30%, transparent); animation: close-drift 14s ease-in-out infinite alternate; }
-.close::after { width: clamp(220px, 32vw, 440px); aspect-ratio: 1; right: -6%; bottom: 6%; background: color-mix(in srgb, var(--solar-primary) 30%, transparent); animation: close-drift 17s ease-in-out infinite alternate-reverse; }
+.close::before, .close::after { content: ''; position: absolute; z-index: -1; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+.close::before { width: clamp(200px, 26vw, 360px); aspect-ratio: 1; left: 12%; top: 30%; background: color-mix(in srgb, var(--eco-primary) 14%, transparent); animation: close-drift 14s ease-in-out infinite alternate; }
+.close::after { width: clamp(180px, 24vw, 320px); aspect-ratio: 1; right: 14%; bottom: 24%; background: color-mix(in srgb, var(--solar-primary) 14%, transparent); animation: close-drift 17s ease-in-out infinite alternate-reverse; }
 @keyframes close-drift { to { transform: translate3d(7%, 9%, 0) scale(1.15); } }
 .close-dots { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.55;
   background-image: radial-gradient(color-mix(in srgb, var(--metal-dark) 16%, transparent) 1.2px, transparent 1.4px); background-size: 26px 26px;
@@ -196,7 +213,7 @@
 .bal-btn.main:hover { filter: brightness(1.08); transform: translateY(-2px); }
 .bal-btn.line { background: var(--panel); color: var(--metal-dark); box-shadow: 0 12px 26px -14px rgba(31, 41, 55, 0.35); }
 .bal-btn.line:hover { transform: translateY(-2px); }
-.site-footer { position: relative; isolation: isolate; z-index: 3; color: var(--metal-mid); overflow: hidden; --sf-end: color-mix(in srgb, var(--eco-primary) 13%, var(--bg-surface)); background: radial-gradient(50% 70% at 90% 0%, color-mix(in srgb, var(--solar-primary) 16%, transparent), transparent 70%), radial-gradient(55% 80% at 4% 100%, color-mix(in srgb, var(--eco-primary) 20%, transparent), transparent 72%), linear-gradient(180deg, var(--bg-surface) 0%, var(--sf-end) 100%); border-top: 1px solid var(--border-soft); }
+.site-footer { position: relative; isolation: isolate; z-index: 3; color: var(--metal-mid); overflow: hidden; --sf-end: color-mix(in srgb, var(--eco-primary) 13%, var(--bg-surface)); background: var(--band-glow-alt), linear-gradient(180deg, var(--bg-surface) 0%, var(--sf-end) 100%); border-top: 1px solid var(--border-soft); }
 .sf-body { padding: clamp(48px, 7vw, 88px) 0 0; }
 .sf-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 40px clamp(24px, 4vw, 64px); }
 .sf-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.01em; color: var(--metal-dark); text-decoration: none; }
@@ -239,8 +256,7 @@
 .faq-band {
   position: relative; isolation: isolate; overflow: hidden;
   background:
-    radial-gradient(48% 55% at 6% 10%, color-mix(in srgb, var(--eco-primary) 20%, transparent), transparent 72%),
-    radial-gradient(40% 44% at 96% 72%, color-mix(in srgb, var(--solar-primary) 18%, transparent), transparent 72%),
+    var(--band-glow),
     linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-surface) 100%);
 }
 /* FAQ sebagai obrolan dengan Si Kilo: pertanyaan berupa gelembung, jawaban terbuka tepat di bawahnya */
@@ -386,7 +402,8 @@
   position: relative; isolation: isolate; overflow: hidden; text-align: center; color: #fff;
   padding-block: clamp(72px, 10vw, 140px);
   background:
-    radial-gradient(60% 70% at 50% 46%, rgba(47, 191, 113, 0.38) 0%, rgba(23, 106, 63, 0.22) 45%, transparent 100%),
+    radial-gradient(circle var(--glow-r) at 22% 50%, rgba(47, 191, 113, 0.2), transparent),
+    radial-gradient(circle var(--glow-r) at 78% 50%, rgba(255, 158, 44, 0.14), transparent),
     linear-gradient(180deg, #0b2a1b 0%, #0f3a26 50%, #0b2a1b 100%);
 }
 .ps-title { margin: 0 auto; max-width: 20ch; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; text-wrap: balance; font-size: clamp(2rem, 5.2vw, 3.9rem); color: #fff; }
@@ -401,3 +418,7 @@
   .ps-grid { grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .ps-cap { max-width: 34ch; }
 }
+
+/* simulator dan fitur memakai resep gradasi yang sama dengan pita lain */
+#simulator-section { background: var(--band-glow); }
+#fitur { background: var(--band-glow-alt); }
