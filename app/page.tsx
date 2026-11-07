@@ -1,5 +1,6 @@
 import Navbar from '@/components/Navbar';
 import HeroDioramaWrapper from '@/components/3d/HeroDioramaWrapper';
+import StoryScene from '@/components/story/StoryScene';
 import SimulatorSection from '@/components/sections/SimulatorSection';
 import FeatureCards from '@/components/sections/FeatureCards';
 import FaqChat from '@/components/sections/FaqChat';
@@ -15,6 +16,11 @@ export default function Home() {
           <HeroDioramaWrapper />
         </div>
       </div>
+
+      {/* ── Satu hari di Laundry Barokah: scroll-story isometrik ── */}
+      <section id="sehari" aria-label="Satu hari di Laundry Barokah">
+        <StoryScene />
+      </section>
 
       {/* ── Simulator Right-Sizing ─────────────────────────────── */}
       <SimulatorSection />
