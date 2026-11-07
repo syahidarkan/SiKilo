@@ -185,7 +185,7 @@ function FlipCard({ card }: { card: Card }) {
         {/* Front */}
         <div
           className="fc-face rounded-3xl p-5 flex flex-col justify-between"
-          style={{ background: '#FFFFFF', border: '1.5px solid var(--border-soft)', boxShadow: '0 8px 24px -8px rgba(31,41,55,0.10)' }}
+          style={{ background: 'var(--panel)', border: '1.5px solid var(--border-soft)', boxShadow: '0 8px 24px -8px rgba(31,41,55,0.10)' }}
         >
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -194,10 +194,10 @@ function FlipCard({ card }: { card: Card }) {
             </div>
             <div
               className="rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: card.colorBg, height: 96, color: card.color }}
+              style={{ background: `color-mix(in srgb, ${card.color} 14%, var(--panel))`, height: 96, color: `color-mix(in srgb, ${card.color} 75%, var(--metal-dark))` }}
               aria-hidden="true"
             >
-              <span className="w-14 h-14 rounded-full bg-white flex items-center justify-center" style={{ boxShadow: '0 8px 18px -8px rgba(31,41,55,0.25)' }}>
+              <span className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'var(--panel)', boxShadow: '0 8px 18px -8px rgba(31,41,55,0.25)' }}>
                 {card.icon}
               </span>
             </div>
@@ -207,7 +207,7 @@ function FlipCard({ card }: { card: Card }) {
             >
               {card.label}
             </p>
-            <p className="text-xs font-semibold mb-2" style={{ color: card.color }}>{card.tagline}</p>
+            <p className="text-xs font-semibold mb-2" style={{ color: `color-mix(in srgb, ${card.color} 75%, var(--metal-dark))` }}>{card.tagline}</p>
             <p className="text-sm leading-relaxed" style={{ color: 'var(--metal-mid)' }}>{card.front}</p>
           </div>
           <div className="flex items-center gap-1.5 mt-2" style={{ color: 'var(--metal-mid)' }}>

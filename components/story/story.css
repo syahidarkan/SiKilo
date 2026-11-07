@@ -40,7 +40,7 @@
 .st-tag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 10px; background: rgba(17, 24, 20, .6); }
 .st-tag i { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; }
 .st-tag b { font-weight: 700; color: #fff; margin-left: 4px; }
-.st-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 48vh; z-index: 3; pointer-events: none; opacity: 0; background: linear-gradient(180deg, rgba(251, 249, 244, 0) 0%, rgba(251, 249, 244, .55) 45%, #fbf9f4 100%); }
+.st-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 48vh; z-index: 3; pointer-events: none; opacity: 0; background: linear-gradient(180deg, rgba(var(--paper-rgb), 0) 0%, rgba(var(--paper-rgb), .55) 45%, rgb(var(--paper-rgb)) 100%); }
 
 /* nota listrik: struk kecil dengan tepi sobek */
 .st-nota {

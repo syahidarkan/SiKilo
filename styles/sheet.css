@@ -5,7 +5,7 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 .sheet {
   position: relative;
-  background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, #f7efdd 100%);
+  background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, var(--sheet-end) 100%);
 }
 .sheet-w {
   max-width: 72rem;
@@ -92,8 +92,8 @@
 /* ── Simulator: composer ala finder EcoPatch ─────────────────── */
 .sim-wrap { position: relative; margin-top: clamp(56px, 7vw, 96px); }
 .sim-composer {
-  background: #fff;
-  border: 2px solid rgba(31, 41, 55, 0.14);
+  background: var(--panel);
+  border: 2px solid var(--border-medium);
   border-radius: 32px;
   padding: 20px clamp(18px, 3vw, 30px) 22px;
   box-shadow: 0 14px 34px -18px rgba(75, 85, 99, 0.35);
@@ -133,7 +133,7 @@
   font: 600 14px/1 var(--font-body);
   color: var(--metal-dark);
   background: transparent;
-  border: 1.5px solid rgba(31, 41, 55, 0.18);
+  border: 1.5px solid var(--border-medium);
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
@@ -141,7 +141,7 @@
 }
 .sim-chip:hover { border-color: var(--eco-dark); }
 .sim-chip:active { transform: scale(0.96); }
-.sim-chip[aria-pressed='true'] { background: var(--eco-dark); border-color: var(--eco-dark); color: #fff; }
+.sim-chip[aria-pressed='true'] { background: var(--eco-dark); border-color: var(--eco-dark); color: var(--on-eco); }
 .sim-chip.pw[aria-pressed='true'] { background: var(--solar-primary); border-color: var(--solar-primary); color: #3b2300; }
 .sim-chip.try { border-style: dashed; }
 .sim-chip:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
@@ -191,9 +191,9 @@
 }
 .bal-btn:active { transform: scale(0.96); }
 .bal-btn:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
-.bal-btn.main { background: var(--metal-dark); color: #fff; }
+.bal-btn.main { background: var(--btn-bg); color: var(--btn-fg); }
 .bal-btn.main:hover { filter: brightness(1.2); }
-.bal-btn.line { background: transparent; color: var(--metal-dark); border-color: rgba(31, 41, 55, 0.3); }
+.bal-btn.line { background: transparent; color: var(--metal-dark); border-color: var(--border-medium); }
 .bal-btn.line:hover { border-color: var(--eco-dark); }
 .site-footer { position: relative; z-index: 3; background: #0f2820; color: #cfe8d9; overflow: hidden; }
 .sf-body { padding: clamp(48px, 7vw, 88px) 0 0; }

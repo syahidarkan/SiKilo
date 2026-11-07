@@ -28,8 +28,16 @@ export default function RootLayout({
   return (
     <html
       lang="id"
+      suppressHydrationWarning
       className={`${plusJakarta.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{var t=localStorage.getItem('waskita-theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){}",
+          }}
+        />
+      </head>
       <body
         className="min-h-full flex flex-col"
         style={{
