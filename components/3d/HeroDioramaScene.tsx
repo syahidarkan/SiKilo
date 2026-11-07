@@ -50,11 +50,11 @@ function getCamTarget(sp: number): CamKF {
 const MASCOT_POS: [number, number, number][] = [
   [ 0.0,  0.53, 3.4],   // 0: trotoar center, shocked
   [-9.0,  0.90, 1.0],   // 1: Kelontong inside counter, shocked
-  [-11.75,2.10, 2.5],   // 2: Kelontong meter wall — clamping cable
+  [-11.75,2.80, 3.0],   // 2: Kelontong cable clamp wall
   [ 0.0,  0.90, 1.0],   // 3: Konveksi sewing table, shocked
-  [-2.75, 2.10, 2.5],   // 4: Konveksi meter wall — clamping cable
+  [ -2.75,2.80, 3.0],   // 4: Konveksi cable clamp wall
   [ 9.0,  0.65, 1.5],   // 5: Laundry baskets, shocked
-  [ 6.25, 2.10, 2.5],   // 6: Laundry meter wall — clamping cable
+  [ 6.25, 2.80, 3.0],   // 6: Laundry cable clamp wall
   [ 0.0,  0.53, 3.4],   // 7: trotoar center, happy
 ];
 
@@ -213,22 +213,48 @@ export default function HeroDioramaScene(): React.ReactElement {
     scene.add(mascot.refs.root);
     mascot.refs.root.position.set(0, 0.53, 3.4);
     mascot.setMood('shocked');
+    // Remove floating shadow disc under mascot
+    mascot.refs.shadowPlane.visible = false;
+
+    // ── Collect drop-cable stubs for toggling during clamp beats ──
+    const dropStubs: THREE.Mesh[] = [];
+    shops.group.traverse((o) => {
+      if (o instanceof THREE.Mesh && (o.userData as { isDropStub?: boolean }).isDropStub) {
+        dropStubs.push(o);
+      }
+    });
+
+    // ── Dynamic split-cable lines (span→mascot, mascot→meter) ─
+    const splitLineMat = new THREE.LineBasicMaterial({ color: 0x1A1A1A, linewidth: 2 });
+    const splitPos1 = new Float32Array(6);
+    const splitPos2 = new Float32Array(6);
+    const splitBuf1 = new THREE.BufferAttribute(splitPos1, 3);
+    const splitBuf2 = new THREE.BufferAttribute(splitPos2, 3);
+    const splitGeo1 = new THREE.BufferGeometry();
+    const splitGeo2 = new THREE.BufferGeometry();
+    splitGeo1.setAttribute('position', splitBuf1);
+    splitGeo2.setAttribute('position', splitBuf2);
+    const splitLine1 = new THREE.Line(splitGeo1, splitLineMat);
+    const splitLine2 = new THREE.Line(splitGeo2, splitLineMat.clone() as THREE.LineBasicMaterial);
+    splitLine1.visible = false;
+    splitLine2.visible = false;
+    scene.add(splitLine1, splitLine2);
 
     // ── Steam particles (mascot shocked state) ───────────────
-    const STEAM_N = 24;
+    const STEAM_N = 36;
     const steamPts   = new Float32Array(STEAM_N * 3);
     const steamVelX  = new Float32Array(STEAM_N);
     const steamVelZ  = new Float32Array(STEAM_N);
     const steamT     = new Float32Array(STEAM_N);
     for (let i = 0; i < STEAM_N; i++) {
-      steamT[i]    = Math.random();
-      steamVelX[i] = (Math.random() - 0.5) * 0.6;
-      steamVelZ[i] = (Math.random() - 0.5) * 0.6;
+      steamT[i]    = 1.1; // force reset on first frame → all spawn at head
+      steamVelX[i] = (Math.random() - 0.5) * 0.9;
+      steamVelZ[i] = (Math.random() - 0.5) * 0.9;
     }
     const steamGeo = new THREE.BufferGeometry();
     steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPts, 3));
     const steamMat = new THREE.PointsMaterial({
-      size: 0.14, color: 0xFFFFFF, transparent: true, opacity: 0.55,
+      size: 0.22, color: 0xDDDDDD, transparent: true, opacity: 0.70,
       depthWrite: false,
     });
     const steamPoints = new THREE.Points(steamGeo, steamMat);
@@ -299,50 +325,88 @@ export default function HeroDioramaScene(): React.ReactElement {
       }
 
       // ── Mascot scale: constant apparent size regardless of zoom ──
-      mascot.refs.root.scale.setScalar(0.90 / Math.max(currentZoom, 0.5));
+      const mascotScale = 0.90 / Math.max(currentZoom, 0.5);
+      mascot.refs.root.scale.setScalar(mascotScale);
 
-      // ── Arm clamping pose during scanning sub-beats ──────────────
+      // ── Clamping beats: arm pose, face wall, split cables ────────
       const isClamping = subBeat === 2 || subBeat === 4 || subBeat === 6;
+      const isShocked  = MASCOT_MOODS[subBeat] === 'shocked';
+      const meterPositions = [shops.meterPos1, shops.meterPos2, shops.meterPos3];
+      const shopIdx = subBeat === 2 ? 0 : subBeat === 4 ? 1 : 2;
+
       if (isClamping) {
+        // Arm reaches toward cable
         mascot.refs.armRight.rotation.z = lerp(mascot.refs.armRight.rotation.z, -1.6, 0.06);
         mascot.refs.armRight.rotation.x = lerp(mascot.refs.armRight.rotation.x,  0.8, 0.06);
-        // Press against the wall (stop Z at ~2.4)
-        currentMascotPos.z = Math.max(currentMascotPos.z, 2.35);
+        // Face wall (-z direction)
+        mascot.refs.root.rotation.y += (0 - mascot.refs.root.rotation.y) * 0.08;
+
+        // Show split-cable (span→mascot→meter), hide static stub
+        splitLine1.visible = true;
+        splitLine2.visible = true;
+        dropStubs.forEach((m) => { m.visible = false; });
+        const mp = meterPositions[shopIdx];
+        const clampX = currentMascotPos.x;
+        const clampY = currentMascotPos.y + 0.5 * mascotScale;
+        const clampZ = currentMascotPos.z - 0.2;
+        splitPos1.set([mp.x, 6.68, 3.80, clampX, clampY, clampZ]);
+        splitBuf1.needsUpdate = true;
+        splitPos2.set([clampX, clampY, clampZ, mp.x, mp.y + 0.3, mp.z + 0.05]);
+        splitBuf2.needsUpdate = true;
       } else {
         mascot.refs.armRight.rotation.z = lerp(mascot.refs.armRight.rotation.z, 0, 0.06);
         mascot.refs.armRight.rotation.x = lerp(mascot.refs.armRight.rotation.x, 0, 0.06);
+        // Hide split-cable, show static stub
+        splitLine1.visible = false;
+        splitLine2.visible = false;
+        dropStubs.forEach((m) => { m.visible = true; });
+        // Face camera
+        const faceDir = new THREE.Vector3(
+          camera.position.x - currentMascotPos.x,
+          0,
+          camera.position.z - currentMascotPos.z,
+        );
+        if (faceDir.lengthSq() > 0.01) {
+          const angle = Math.atan2(faceDir.x, faceDir.z);
+          mascot.refs.root.rotation.y += (angle - mascot.refs.root.rotation.y) * 0.08;
+        }
+      }
+
+      // ── Body colour: red when shocked, orange otherwise ──────────
+      const bodyMat = mascot.refs.bodyMesh.material as THREE.MeshStandardMaterial;
+      const faceMat = mascot.refs.facePanel.material as THREE.MeshStandardMaterial;
+      if (isShocked) {
+        bodyMat.color.setHex(0xCC2222);
+        bodyMat.emissive.setHex(0x660000);
+        bodyMat.emissiveIntensity = 0.25 + Math.sin(time * 9) * 0.15;
+        faceMat.color.setHex(0xFFBBBB);
+      } else {
+        bodyMat.color.setHex(0xFFA726);
+        bodyMat.emissive.setHex(0x000000);
+        bodyMat.emissiveIntensity = 0;
+        faceMat.color.setHex(0xFFF8E7);
       }
 
       // ── Steam effect when shocked ────────────────────────────────
-      const isSteaming = MASCOT_MOODS[subBeat] === 'shocked';
-      steamPoints.visible = isSteaming;
-      if (isSteaming) {
-        const headY = currentMascotPos.y + 1.55 / Math.max(currentZoom, 0.5);
+      steamPoints.visible = isShocked;
+      if (isShocked) {
+        const headY = currentMascotPos.y + 1.4 * mascotScale;
         for (let i = 0; i < STEAM_N; i++) {
-          steamT[i] += delta * 0.9;
+          steamT[i] += delta * 1.1;
           if (steamT[i] > 1) {
             steamT[i] = 0;
-            steamPts[i * 3]     = currentMascotPos.x + (Math.random() - 0.5) * 0.3;
+            steamPts[i * 3]     = currentMascotPos.x + (Math.random() - 0.5) * 0.4;
             steamPts[i * 3 + 1] = headY;
-            steamPts[i * 3 + 2] = currentMascotPos.z + (Math.random() - 0.5) * 0.2;
+            steamPts[i * 3 + 2] = currentMascotPos.z + (Math.random() - 0.5) * 0.3;
+            steamVelX[i] = (Math.random() - 0.5) * 0.9;
+            steamVelZ[i] = (Math.random() - 0.5) * 0.9;
           }
-          steamPts[i * 3]     += steamVelX[i] * delta * 0.4;
-          steamPts[i * 3 + 1] += (0.9 + steamT[i] * 0.4) * delta;
-          steamPts[i * 3 + 2] += steamVelZ[i] * delta * 0.4;
+          steamPts[i * 3]     += steamVelX[i] * delta * 0.5;
+          steamPts[i * 3 + 1] += (1.0 + steamT[i] * 0.6) * delta;
+          steamPts[i * 3 + 2] += steamVelZ[i] * delta * 0.5;
         }
-        steamMat.opacity = 0.4 + Math.sin(time * 4) * 0.1;
+        steamMat.opacity = 0.55 + Math.sin(time * 3) * 0.15;
         (steamPoints.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
-      }
-
-      // ── Mascot rotation: face the camera roughly ─────────────────
-      const faceDir = new THREE.Vector3(
-        camera.position.x - currentMascotPos.x,
-        0,
-        camera.position.z - currentMascotPos.z,
-      );
-      if (faceDir.lengthSq() > 0.01) {
-        const angle = Math.atan2(faceDir.x, faceDir.z);
-        mascot.refs.root.rotation.y += (angle - mascot.refs.root.rotation.y) * 0.08;
       }
 
       // ── Meter LED animations ─────────────────────────────────────

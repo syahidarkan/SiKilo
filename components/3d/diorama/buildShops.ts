@@ -158,7 +158,9 @@ function buildMeterBox(cx: number, g: THREE.Group): { mesh: THREE.Mesh; indMesh:
     new THREE.Vector3(mx, my + 0.5, mz + 0.05),
   ]);
   const stubGeo = new THREE.TubeGeometry(stubCurve, 12, 0.025, 5, false);
-  g.add(new THREE.Mesh(stubGeo, new THREE.MeshStandardMaterial({ color: 0x1A1A1A, roughness: 0.9 })));
+  const stubMesh = new THREE.Mesh(stubGeo, new THREE.MeshStandardMaterial({ color: 0x1A1A1A, roughness: 0.9 }));
+  stubMesh.userData.isDropStub = true;
+  g.add(stubMesh);
 
   // CT clamp ring (clamped on cable at y≈3.1)
   const clampM = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.3, metalness: 0.65 });
@@ -358,19 +360,23 @@ function buildShell(
   g.add(box(0.20, 4.4, 0.20, colM, cx - 3.0, 2.2, 2.37));
   g.add(box(0.20, 4.4, 0.20, colM, cx + 3.0, 2.2, 2.37));
 
-  // Front beam
-  g.add(box(6.5, 0.22, 0.22, colM, cx, 4.31, 2.37));
+  // Front beam — ghost-transparent so camera can see shop interior
+  const frontBeamM = new THREE.MeshStandardMaterial({ color: 0xBBB8B2, roughness: 0.7, transparent: true, opacity: 0.28, depthWrite: false });
+  g.add(box(6.5, 0.22, 0.22, frontBeamM, cx, 4.31, 2.37));
 
-  // Ceiling
-  g.add(box(6.5, 0.14, 4.5, mat(0xEEEAE0, 0.9), cx, 4.37, 0.14));
+  // Ceiling — ghost-transparent so isometric camera sees inside
+  const ceilM = new THREE.MeshStandardMaterial({ color: 0xEEEAE0, roughness: 0.9, transparent: true, opacity: 0.12, depthWrite: false });
+  g.add(box(6.5, 0.14, 4.5, ceilM, cx, 4.37, 0.14));
 
-  // Roof overhang
-  g.add(box(7.0, 0.20, 1.6, roofM, cx, 4.47, 2.6));
-  g.add(box(7.0, 0.20, 0.5, roofM, cx, 4.75, 1.8));
+  // Roof overhang — ghost
+  const ovhM = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.8, transparent: true, opacity: 0.20, depthWrite: false });
+  g.add(box(7.0, 0.20, 1.6, ovhM, cx, 4.47, 2.6));
+  g.add(box(7.0, 0.20, 0.5, ovhM, cx, 4.75, 1.8));
 
-  // Roof top flat
-  g.add(box(6.8, 0.22, 4.9, mat(0xCCC8C0, 0.9), cx, 4.59, -0.1));
-  g.add(box(6.8, 0.22, 0.4, mat(roofColor, 0.7), cx, 4.70, 2.4));
+  // Roof top flat — ghost
+  const rfTopM = new THREE.MeshStandardMaterial({ color: 0xCCC8C0, roughness: 0.9, transparent: true, opacity: 0.18, depthWrite: false });
+  g.add(box(6.8, 0.22, 4.9, rfTopM, cx, 4.59, -0.1));
+  g.add(box(6.8, 0.22, 0.4, new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.7, transparent: true, opacity: 0.18, depthWrite: false }), cx, 4.70, 2.4));
 
   // Porch floor
   g.add(box(6.5, 0.14, 1.0, tileM, cx, 0.07, 2.9));
