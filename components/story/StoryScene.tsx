@@ -15,12 +15,12 @@ import './story.css';
    ───────────────────────────────────────────────────────────────────────────── */
 
 const CHAPTERS = [
-  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Laundry Barokah', body: 'Satu meteran listrik, delapan mesin, dan tagihan yang baru ketahuan di akhir bulan. Gulir untuk mengikuti satu hari kerja di toko ini.', rail: 'Meteran' },
-  { a: 0.14, b: 0.26, kick: '01 · Sensor', title: 'Dipasang di panel, bukan di tiap mesin', body: 'Sensor jepit melingkar di kabel masuk. Arus dan tegangan seluruh toko terbaca dari satu titik, tanpa membongkar instalasi.', rail: 'Sensor' },
-  { a: 0.3, b: 0.5, kick: '02 · Pembacaan beban', title: 'Pengering dan setrika menyala bersamaan', body: 'Dari bentuk gelombang arusnya, NILM memisahkan tiap mesin. Di jam sibuk pagi, semua beban ditarik dari PLN sekaligus.', rail: 'Mesin' },
-  { a: 0.54, b: 0.66, kick: '03 · Panel surya', title: 'Matahari naik, panel mulai bekerja', body: 'Panel di atap baru berguna kalau ada mesin yang menyala di jam yang sama. Sejak Permen ESDM 2/2024, kelebihan listrik tidak lagi memotong tagihan.', rail: 'Surya' },
-  { a: 0.69, b: 0.86, kick: '04 · Penjadwalan', title: 'Mesin berat digeser ke jam matahari', body: 'Agen menjadwal ulang beban yang fleksibel. Mesin cuci bergantian, pengering dan setrika uap menyusul di jam produksi surya tertinggi.', rail: 'Jadwal' },
-  { a: 0.9, b: 1.01, kick: '05 · Hasil', title: 'Meteran hijau di siang hari', body: 'Sebagian besar beban siang kini dilayani panel. Angka di layar ini ilustrasi. Hasil untuk usahamu dihitung di simulator.', rail: 'Hasil', cta: true },
+  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Laundry Barokah', body: 'Tagihan listrik sering baru terasa di akhir bulan, saat semuanya sudah terlambat. Ikuti satu hari kerja di toko ini dan lihat ke mana listrik Anda sebenarnya mengalir.' },
+  { a: 0.14, b: 0.26, kick: '01 · Pasang sensor', title: 'Satu sensor di panel, tanpa bongkar instalasi', body: 'Sensor cukup dijepitkan pada kabel masuk. Tidak perlu memutus listrik dan tidak perlu memasang alat di setiap mesin. Dari satu titik itu, pemakaian seluruh toko terbaca.' },
+  { a: 0.3, b: 0.5, kick: '02 · Kenali mesin', title: 'Kini jelas mesin mana yang paling boros', body: 'Dengan NILM, setiap mesin dikenali dari pola arusnya. Pada pagi hari, pengering dan setrika uap menyala bersamaan, dan seluruh bebannya ditanggung PLN.' },
+  { a: 0.54, b: 0.66, kick: '03 · Manfaatkan matahari', title: 'Matahari naik, panel surya mulai bekerja', body: 'Listrik dari panel hanya menghemat jika langsung terpakai. Sejak terbitnya Permen ESDM Nomor 2 Tahun 2024, kelebihan listrik tidak lagi memotong tagihan. Karena itu, waktu pemakaian menjadi kunci.' },
+  { a: 0.69, b: 0.86, kick: '04 · Atur jadwal', title: 'Mesin berat digeser ke jam matahari', body: 'Agen penjadwal memindahkan beban yang bisa ditunda ke siang hari. Mesin cuci bekerja bergantian, lalu pengering dan setrika uap menyusul saat panel menghasilkan listrik paling banyak.' },
+  { a: 0.9, b: 1.01, kick: '05 · Hasilnya', title: 'Meteran hijau, tagihan lebih ringan', body: 'Pada siang hari, sebagian besar kebutuhan listrik dilayani panel sendiri. Angka di layar ini hanya ilustrasi. Hitung perkiraan untuk usaha Anda di simulator.', cta: true },
 ];
 
 const CAM_KEYS = [
@@ -68,7 +68,8 @@ const MACHINES: MachineDef[] = [
   { kind: 'sewing', name: 'Mesin jahit 3', x: 0.7, floor: 1, z: 1.0, kw: 0.4, before: [0.35, 0.53], after: [0.66, 0.9] },
 ];
 const BASE_KW = 0.3;
-const TAG_DY = [0, -28, -56, -22, -8, 0, -28, -56]; // geser vertikal label supaya tidak bertumpuk
+const TAG_DY = [0, -28, -56, -30, -8, 0, -28, -56];
+const TAG_DX = [-14, 0, -6, 34, 0, -10, 0, 20]; // geser vertikal label supaya tidak bertumpuk
 const PV_KWP = 4.2;
 
 export default function StoryScene() {
@@ -637,14 +638,12 @@ export default function StoryScene() {
 
     /* ── referensi DOM ── */
     const copies = qa('.st-copy');
-    const railEls = qa('.st-rail li');
     const clouds = qa('.st-cloud');
     const tags = qa('.st-tag');
-    const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim');
-    const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]');
+    const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim'), fade = q('.st-fade');
+    const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]'), stamp = q('.st-stamp');
     const cA = new THREE.Color(), cB = new THREE.Color(), cT = new THREE.Color(), cI = new THREE.Color();
     const inkDark = new THREE.Color(0x14281a), inkLight = new THREE.Color(0xf1f7f2), mutDark = new THREE.Color(0x3f5a46), mutLight = new THREE.Color(0xc4d4ca);
-    let lastRail = -1;
     const fmt = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
     const projV = new THREE.Vector3();
 
@@ -737,7 +736,7 @@ export default function StoryScene() {
       const pv = PV_KWP * Math.max(0, e) * 0.92 * panelOn;
       const grid = Math.max(0, load - pv);
       const selfShare = load > 0 ? Math.min(pv, load) / load : 0;
-      const nilm = smooth(0.27, 0.34, p) * (1 - smooth(0.93, 0.98, p));
+      const nilm = smooth(0.27, 0.34, p) * (1 - smooth(0.5, 0.55, p));
 
       machines.forEach((m, i) => {
         if (m.spin) m.spin.rotation.z -= dt * 6 * m.act * (reduced ? 0 : 1);
@@ -758,7 +757,7 @@ export default function StoryScene() {
         const px = (projV.x * 0.5 + 0.5) * cw, py = (-projV.y * 0.5 + 0.5) * chh;
         const onScreen = projV.z < 1 && px > 0 && px < cw && py > 0 && py < chh;
         tag.style.opacity = onScreen ? nilm.toFixed(2) : '0';
-        tag.style.transform = `translate3d(${px.toFixed(1)}px,${(py + TAG_DY[i]).toFixed(1)}px,0) translate(-50%,-100%)`;
+        tag.style.transform = `translate3d(${(px + TAG_DX[i]).toFixed(1)}px,${(py + TAG_DY[i]).toFixed(1)}px,0) translate(-50%,-100%)`;
         (tag.querySelector('b') as HTMLElement).textContent = fmt(kw, 2) + ' kW';
         (tag.querySelector('i') as HTMLElement).style.background = kw > 1 && pv < load ? '#ef4444' : kw > 0.05 ? '#2fbf71' : '#9ca3af';
       });
@@ -818,12 +817,7 @@ export default function StoryScene() {
       scrim.style.opacity = maxO.toFixed(2);
       hint.style.opacity = p > 0.02 ? '0' : '1';
 
-      let cur = 0;
-      CHAPTERS.forEach((c, i) => { if (p >= c.a - 0.02) cur = i; });
-      if (cur !== lastRail) {
-        lastRail = cur;
-        railEls.forEach((el2, i) => { el2.className = (i < cur ? 'seen ' : '') + (i === cur ? 'now' : ''); });
-      }
+      fade.style.opacity = smooth(0.93, 1, p).toFixed(3);
 
       const hh2 = Math.floor(hr), mm = Math.floor((hr - hh2) * 60);
       rHour.textContent = String(hh2).padStart(2, '0') + '.' + String(mm).padStart(2, '0');
@@ -832,6 +826,7 @@ export default function StoryScene() {
       rGrid.textContent = fmt(grid) + ' kW';
       rSelf.textContent = Math.round(selfShare * 100) + '%';
       rBar.style.width = Math.round(selfShare * 100) + '%';
+      stamp.classList.toggle('on', selfShare > 0.85 && pv > 0.3);
 
       renderer.render(scene, camera);
     }
@@ -866,36 +861,33 @@ export default function StoryScene() {
         </div>
         <canvas className="st-canvas" />
         <div className="st-scrim" />
+        <div className="st-fade" />
         <div className="st-labels" aria-hidden="true">
           {MACHINES.map((m) => (
             <div className="st-tag" key={m.name}><i />{m.name}<b>0,00 kW</b></div>
           ))}
         </div>
-        <div className="st-nogl" hidden>Browser kamu belum mendukung WebGL, jadi demo 3D tidak bisa tampil.</div>
+        <div className="st-nogl" hidden>Browser Anda belum mendukung WebGL, sehingga demo 3D tidak dapat ditampilkan.</div>
 
         {CHAPTERS.map((c, i) => (
           <div className="st-copy" key={i}>
             <div className="st-kick">{c.kick}</div>
             {c.h ? <h1>{c.title}</h1> : <h2>{c.title}</h2>}
             <p>{c.body}</p>
-            {c.cta && <a className="st-btn" href="#simulator-section">Hitung untuk usahamu</a>}
+            {c.cta && <a className="st-btn" href="#simulator-section">Hitung untuk usaha Anda</a>}
           </div>
         ))}
 
-        <ol className="st-rail" aria-hidden="true">
-          {CHAPTERS.map((c, i) => (
-            <li key={i} className={i === 0 ? 'now' : ''}><span>{c.rail}</span><i /></li>
-          ))}
-        </ol>
-
-        <dl className="st-readout" aria-label="Contoh pembacaan listrik, ilustrasi">
-          <small><span>Contoh pembacaan</span><span data-r="hour">05.18</span></small>
-          <dt>Beban toko</dt><dd data-r="load">0,3 kW</dd>
-          <dt>Produksi surya</dt><dd data-r="pv">0,0 kW</dd>
-          <dt>Dari PLN</dt><dd data-r="grid">0,3 kW</dd>
-          <dt>Pakai surya</dt><dd data-r="self">0%</dd>
-          <div className="st-bar"><i data-r="bar" /></div>
-        </dl>
+        <div className="st-nota" role="group" aria-label="Contoh pembacaan listrik, ilustrasi">
+          <span className="st-stamp" aria-hidden="true">Hemat<br />surya</span>
+          <div className="st-nota-head"><b>Nota listrik</b><span data-r="hour">05.18</span></div>
+          <div className="st-row"><span>Beban toko</span><i /><b data-r="load">0,3 kW</b></div>
+          <div className="st-row pln"><span>Dari PLN</span><i /><b data-r="grid">0,3 kW</b></div>
+          <div className="st-row sur"><span>Dari surya</span><i /><b data-r="pv">0,0 kW</b></div>
+          <div className="st-total"><span>Porsi surya</span><b data-r="self">0%</b></div>
+          <div className="st-split"><i data-r="bar" /></div>
+          <div className="st-nota-foot">Contoh, bukan data lapangan</div>
+        </div>
         <div className="st-hint">Gulir ↓</div>
       </div>
     </div>

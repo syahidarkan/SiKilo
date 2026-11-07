@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LogIn, Menu, X, Zap } from 'lucide-react';
+import { LogIn, Menu, Moon, Sun, X, Zap } from 'lucide-react';
 import { DASHBOARD_URL } from '@/lib/waskita';
 
 const NAV_LINKS = [
@@ -14,6 +14,19 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    setDark(document.documentElement.dataset.theme === 'dark');
+  }, []);
+  const toggleTheme = () => {
+    const next = !dark;
+    const root = document.documentElement;
+    root.classList.add('theme-anim');
+    root.dataset.theme = next ? 'dark' : 'light';
+    try { localStorage.setItem('waskita-theme', next ? 'dark' : 'light'); } catch {}
+    setDark(next);
+    window.setTimeout(() => root.classList.remove('theme-anim'), 450);
+  };
   const [active, setActive] = useState<string>('sehari');
   const headerRef = useRef<HTMLElement>(null);
 
@@ -92,6 +105,15 @@ export default function Navbar() {
         </div>
 
         <div className="nav-right">
+          <button
+            type="button"
+            className="nav-theme"
+            onClick={toggleTheme}
+            aria-label={dark ? 'Ganti ke mode terang' : 'Ganti ke mode gelap'}
+            title={dark ? 'Mode terang' : 'Mode gelap'}
+          >
+            {dark ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
           <a href={DASHBOARD_URL} className="nav-link inline-flex items-center gap-1.5" title="Masuk ke dasbor WASKITA">
             <LogIn size={15} /> Masuk
           </a>

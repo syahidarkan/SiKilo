@@ -1,56 +1,50 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Reveal from '@/components/Reveal';
 import KiloAvatar from '@/components/KiloAvatar';
-import { useGaze, useReducedMotion } from '@/components/hooks';
+import { useReducedMotion } from '@/components/hooks';
 
 const FAQS = [
   {
     q: 'Apa yang dikerjakan WASKITA?',
-    a: 'WASKITA membaca beban tiap mesin dari satu titik ukur, menjadwalkan ulang mesin yang fleksibel ke jam matahari, dan menyusun rapor kelayakan PLTS untuk pengajuan ke bank.',
+    a: 'WASKITA membaca pemakaian listrik tiap mesin dari satu titik ukur, menjadwalkan ulang mesin yang fleksibel ke jam matahari, dan menyusun rapor kelayakan PLTS untuk pengajuan ke bank. Tujuannya sederhana: tagihan Anda lebih ringan dan keputusan memasang PLTS lebih tepat.',
   },
   {
-    q: 'Bagaimana Si Kilo mendeteksi mesin yang boros?',
-    a: 'Si Kilo menggunakan teknologi NILM (Non-Intrusive Load Monitoring), tanpa perlu pasang sensor di tiap mesin. Cukup satu titik pantau di panel utama, Si Kilo "membaca" sidik jari daya setiap mesin dari pola arus listriknya.',
+    q: 'Bagaimana Si Kilo tahu mesin mana yang boros?',
+    a: 'Si Kilo memakai teknologi NILM (Non-Intrusive Load Monitoring). Cukup satu sensor di panel utama, tanpa memasang alat di setiap mesin. Setiap mesin memiliki pola arus yang khas, dan dari pola itulah Si Kilo mengenalinya.',
   },
   {
-    q: 'Berapa lama sampai balik modal PLTS?',
-    a: 'Dari simulasi, balik modal sekitar 2,8 sampai 4,2 tahun untuk profil UMKM yang diuji. Ini estimasi dari tiruan digital dan belum diverifikasi di lapangan. Angka untuk usahamu bisa dihitung di simulator.',
+    q: 'Berapa lama PLTS balik modal?',
+    a: 'Menurut simulasi, balik modal berkisar 2,8 sampai 4,2 tahun untuk profil UMKM yang kami uji. Angka ini perkiraan dari tiruan digital dan belum diverifikasi di lapangan. Untuk angka usaha Anda, silakan coba simulator.',
   },
   {
-    q: 'Apakah datanya bisa dipakai untuk pengajuan pinjaman bank?',
-    a: 'Rapor disusun dari data konsumsi terukur, proyeksi penghematan, dan waktu balik modal, dalam bentuk PDF. Penerimaannya tetap bergantung pada lembaga pembiayaan, dan saat ini belum ada kerja sama resmi dengan bank mana pun.',
+    q: 'Apakah datanya bisa dipakai untuk mengajukan pinjaman bank?',
+    a: 'Rapor disusun dari data konsumsi yang terukur, perkiraan penghematan, dan waktu balik modal, dalam format PDF. Namun, penerimaannya tetap bergantung pada lembaga pembiayaan. Saat ini belum ada kerja sama resmi dengan bank mana pun.',
   },
 ];
 
-const DOTS_MS = 800;
-const WORD_MS = 42;
+const DOTS_MS = 900;
+const WORD_MS = 36;
 
-/** Dots first, then the answer types out word by word. Closing mid-way restarts it; a finished answer stays. */
-function Answer({ text, open, reduced }: { text: string; open: boolean; reduced: boolean }) {
+const clock = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
+
+type Turn = { q: number; at: string };
+
+/** Tiga titik "mengetik", lalu jawaban muncul kata demi kata. */
+function Answer({ text, reduced, onTick }: { text: string; reduced: boolean; onTick: () => void }) {
   const words = text.split(' ');
-  const [count, setCount] = useState(0);
-  const done = useRef(false);
+  const [count, setCount] = useState(reduced ? words.length : 0);
 
   useEffect(() => {
-    if (!open || done.current) return;
-    if (reduced) {
-      setCount(words.length);
-      done.current = true;
-      return;
-    }
-    setCount(0);
+    if (reduced) return;
     let k = 0;
     let iv: ReturnType<typeof setInterval> | undefined;
     const t = setTimeout(() => {
       iv = setInterval(() => {
         k++;
         setCount(k);
-        if (k >= words.length) {
-          clearInterval(iv);
-          done.current = true;
-        }
+        if (k >= words.length) clearInterval(iv);
       }, WORD_MS);
     }, DOTS_MS);
     return () => {
@@ -58,10 +52,12 @@ function Answer({ text, open, reduced }: { text: string; open: boolean; reduced:
       clearInterval(iv);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, text, reduced]);
+  }, [text, reduced]);
+
+  useEffect(onTick, [count, onTick]);
 
   return count === 0 ? (
-    <span className="faq-dots" aria-hidden="true">
+    <span className="faq-dots" aria-label="Si Kilo sedang mengetik">
       <i />
       <i />
       <i />
@@ -75,22 +71,32 @@ function Answer({ text, open, reduced }: { text: string; open: boolean; reduced:
 }
 
 export default function FaqChat() {
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
   const reduced = useReducedMotion();
-  const sectionRef = useRef<HTMLElement>(null);
-  const chatRef = useRef<HTMLDivElement>(null);
-  const baseId = useId();
+  const [thread, setThread] = useState<Turn[]>([]);
+  const phoneRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
 
-  // The first question opens by itself once the chat is in view, so the section shows what it is.
+  const scrollDown = useCallback(() => {
+    const el = bodyRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
+  const ask = useCallback((i: number) => {
+    setThread((t) => (t.some((x) => x.q === i) ? t : [...t, { q: i, at: clock() }]));
+  }, []);
+
+  // Pertanyaan pertama masuk sendiri begitu ponsel terlihat, supaya orang langsung paham ini apa.
   useEffect(() => {
-    const el = chatRef.current;
+    const el = phoneRef.current;
     if (!el) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting) return;
+        if (!entry.isIntersecting || started.current) return;
+        started.current = true;
         io.disconnect();
-        timer = setTimeout(() => setOpenIdx((cur) => cur ?? 0), reduced ? 0 : 500);
+        timer = setTimeout(() => ask(0), reduced ? 0 : 600);
       },
       { threshold: 0.5 },
     );
@@ -99,17 +105,16 @@ export default function FaqChat() {
       io.disconnect();
       clearTimeout(timer);
     };
-  }, [reduced]);
+  }, [ask, reduced]);
 
-  useGaze(sectionRef, reduced);
+  useEffect(scrollDown, [thread.length, scrollDown]);
 
-  const toggle = (i: number) => setOpenIdx((cur) => (cur === i ? null : i));
+  const left = FAQS.map((f, i) => ({ ...f, i })).filter((f) => !thread.some((t) => t.q === f.i));
 
   return (
-    <section id="faq" ref={sectionRef} className="sheet-band" aria-labelledby="h-faq">
+    <section id="faq" className="sheet-band faq-band" aria-labelledby="h-faq">
       <div className="sheet-w">
-        <div className="grid md:grid-cols-[1fr_1.5fr] gap-12 md:gap-20 items-start">
-          {/* Left - intro */}
+        <div className="grid md:grid-cols-[1fr_minmax(0,25rem)] gap-12 md:gap-20 items-center">
           <Reveal className="md:sticky md:top-24">
             <div className="sh-mark">
               <b>04</b>
@@ -119,49 +124,54 @@ export default function FaqChat() {
               Tanya langsung Si Kilo
             </h2>
             <p className="sh-lead mt-5" style={{ justifySelf: 'start' }}>
-              Klik pertanyaannya, Si Kilo yang jawab. Satu per satu, seperti ngobrol.
+              Pilih satu pertanyaan, lalu Si Kilo yang menjawab. Di produk yang sebenarnya, Si Kilo mengirim ringkasan harian dengan cara yang sama, lewat WhatsApp.
             </p>
           </Reveal>
 
-          {/* Right - chat */}
           <Reveal delay={80}>
-            <div ref={chatRef} className="faq-chat">
-              {FAQS.map((faq, i) => {
-                const open = openIdx === i;
-                const ansId = `${baseId}-ans-${i}`;
-                return (
-                  <div key={i} className="faq-qa">
-                    <button
-                      type="button"
-                      className="faq-q"
-                      aria-expanded={open}
-                      aria-controls={ansId}
-                      onClick={() => toggle(i)}
-                    >
-                      {faq.q}
-                    </button>
-                    <div id={ansId} className={`faq-ans ${open ? 'open' : ''}`}>
-                      <div className="faq-ans-in">
-                        <div className="faq-msg">
-                          <KiloAvatar className="faq-avatar" />
-                          <p>
-                            <Answer text={faq.a} open={open} reduced={reduced} />
-                          </p>
-                        </div>
-                      </div>
+            <div ref={phoneRef} className="wa" role="group" aria-label="Contoh percakapan dengan Si Kilo">
+              <div className="wa-head">
+                <span className="wa-av" aria-hidden="true"><KiloAvatar /></span>
+                <div>
+                  <b>Si Kilo</b>
+                  <small>asisten energi WASKITA · online</small>
+                </div>
+              </div>
+
+              <div ref={bodyRef} className="wa-body" aria-live="polite">
+                <div className="wa-day">Hari ini</div>
+                {thread.length === 0 && <div className="wa-empty">Pilih pertanyaan di bawah untuk memulai.</div>}
+                {thread.map((t) => (
+                  <div key={t.q} className="wa-turn">
+                    <div className="wa-msg out">
+                      <p>{FAQS[t.q].q}</p>
+                      <time>{t.at} <span className="wa-tick">✓✓</span></time>
+                    </div>
+                    <div className="wa-msg in">
+                      <p><Answer text={FAQS[t.q].a} reduced={reduced} onTick={scrollDown} /></p>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
 
-              {/* Hint, only while nothing is open */}
-              <div className={`faq-ans faq-rest ${openIdx === null ? 'open' : ''}`} aria-hidden="true">
-                <div className="faq-ans-in">
-                  <div className="faq-msg">
-                    <KiloAvatar className="faq-avatar" />
-                    <p>Klik salah satu, nanti Si Kilo yang jawab</p>
+              <div className="wa-foot">
+                {left.length > 0 ? (
+                  <>
+                    <span className="wa-hint">Balasan cepat</span>
+                    <div className="wa-chips">
+                      {left.map((f) => (
+                        <button key={f.i} type="button" className="wa-chip" onClick={() => ask(f.i)}>
+                          {f.q}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="wa-done">
+                    <span>Semua pertanyaan sudah terjawab.</span>
+                    <button type="button" className="wa-chip" onClick={() => setThread([])}>Ulangi dari awal</button>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </Reveal>

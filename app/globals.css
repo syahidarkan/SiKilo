@@ -317,13 +317,13 @@ section[id] {
   position: fixed;
   inset: 0 0 auto 0;
   z-index: 100;
-  background: rgba(251, 249, 244, 0.72);
+  background: var(--nav-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transition: background 0.25s, box-shadow 0.25s, backdrop-filter 0.25s;
 }
 .nav-solid {
-  background: rgba(251, 249, 244, 0.92);
+  background: var(--nav-bg-solid);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 1px 0 var(--border-soft);
@@ -810,5 +810,22 @@ section[id] {
 }
 
 .nav:has(.nav-sheet.open) {
-  background: rgba(251, 249, 244, 0.99);
+  background: var(--nav-bg-sheet);
 }
+
+.nav-theme {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 2px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-soft);
+  background: transparent;
+  color: var(--metal-dark);
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.3, 1.6, 0.5, 1), border-color 0.15s ease;
+}
+.nav-theme:hover { border-color: var(--eco-primary); transform: rotate(-12deg); }
+.nav-theme:active { transform: scale(0.94); }
+.nav-theme:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 2px; }

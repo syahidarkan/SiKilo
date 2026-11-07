@@ -4,6 +4,16 @@
    ============================================================ */
 
 :root {
+  color-scheme: light;
+  --panel: #FFFFFF;
+  --nav-bg: rgba(251, 249, 244, 0.72);
+  --nav-bg-solid: rgba(251, 249, 244, 0.92);
+  --nav-bg-sheet: rgba(251, 249, 244, 0.99);
+  --sheet-end: #F7EFDD;
+  --paper-rgb: 251, 249, 244;
+  --btn-bg: #1F2937;
+  --btn-fg: #FFFFFF;
+  --on-eco: #FFFFFF;
   /* ── Paper Base (Kertas Nota) ──────────────────────────── */
   --bg-paper: #FBF9F4;
   --bg-surface: #F4EFE6;
@@ -44,4 +54,50 @@
   --shadow-clay: 0 10px 30px -10px rgba(75, 85, 99, 0.08);
   --shadow-hover: 0 16px 36px -8px rgba(255, 158, 44, 0.22);
   --shadow-card: 0 4px 20px -4px rgba(31, 41, 55, 0.05);
+}
+
+
+/* ── Mode gelap: mengikuti tampilan dasbor (biru kehijauan pekat) ── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-paper: #0B1419;
+  --bg-surface: #111D24;
+  --bg-surface-hover: #16252E;
+  --border-soft: #1E2E38;
+  --border-medium: #2C404D;
+
+  --solar-light: #3A2A12;
+  --solar-dark: #FFB35C;
+
+  --eco-light: #12382A;
+  --eco-hover: #3AD57F;
+  --eco-dark: #58DC9B;
+
+  --metal-dark: #E7EEF1;
+  --metal-mid: #A2B3BC;
+  --metal-light: #6D808A;
+  --grid-alert: #F87171;
+  --grid-alert-bg: #3A1A1A;
+
+  --shadow-clay: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 16px 36px -8px rgba(255, 158, 44, 0.2);
+  --shadow-card: 0 4px 20px -4px rgba(0, 0, 0, 0.45);
+
+  --panel: #121E26;
+  --nav-bg: rgba(11, 20, 25, 0.72);
+  --nav-bg-solid: rgba(11, 20, 25, 0.92);
+  --nav-bg-sheet: rgba(11, 20, 25, 0.99);
+  --sheet-end: #0E181E;
+  --paper-rgb: 11, 20, 25;
+  --btn-bg: #E7EEF1;
+  --btn-fg: #0B1419;
+  --on-eco: #05210F;
+}
+
+/* Perpindahan tema yang halus, hanya sebentar saat tombol ditekan */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, fill 0.35s ease, box-shadow 0.35s ease !important;
 }

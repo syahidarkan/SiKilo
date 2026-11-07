@@ -5,7 +5,7 @@
    ═════════════════════════════════════════════════════════════════════════════ */
 .sheet {
   position: relative;
-  background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, #f7efdd 100%);
+  background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, var(--sheet-end) 100%);
 }
 .sheet-w {
   max-width: 72rem;
@@ -57,33 +57,11 @@
   margin: 0;
   max-width: 38ch;
   justify-self: end;
-  padding: 0 0 6px 1rem;
-  border-left: 2px solid var(--eco-primary);
+  padding: 0 0 6px;
   font-size: clamp(1rem, 1.35vw, 1.15rem);
   line-height: 1.6;
   font-weight: 500;
   color: var(--metal-mid);
-}
-.hl {
-  position: relative;
-  display: inline-block;
-  color: var(--eco-dark);
-}
-.hl::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.05em;
-  height: 0.11em;
-  border-radius: 99px;
-  background: var(--solar-primary);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s;
-}
-.rv-in .hl::after {
-  transform: scaleX(1);
 }
 @media (max-width: 880px) {
   .sh { grid-template-columns: minmax(0, 1fr); }
@@ -93,8 +71,8 @@
 /* ── Simulator: composer ala finder EcoPatch ─────────────────── */
 .sim-wrap { position: relative; margin-top: clamp(56px, 7vw, 96px); }
 .sim-composer {
-  background: #fff;
-  border: 2px solid rgba(31, 41, 55, 0.14);
+  background: var(--panel);
+  border: 2px solid var(--border-medium);
   border-radius: 32px;
   padding: 20px clamp(18px, 3vw, 30px) 22px;
   box-shadow: 0 14px 34px -18px rgba(75, 85, 99, 0.35);
@@ -134,7 +112,7 @@
   font: 600 14px/1 var(--font-body);
   color: var(--metal-dark);
   background: transparent;
-  border: 1.5px solid rgba(31, 41, 55, 0.18);
+  border: 1.5px solid var(--border-medium);
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
@@ -142,7 +120,7 @@
 }
 .sim-chip:hover { border-color: var(--eco-dark); }
 .sim-chip:active { transform: scale(0.96); }
-.sim-chip[aria-pressed='true'] { background: var(--eco-dark); border-color: var(--eco-dark); color: #fff; }
+.sim-chip[aria-pressed='true'] { background: var(--eco-dark); border-color: var(--eco-dark); color: var(--on-eco); }
 .sim-chip.pw[aria-pressed='true'] { background: var(--solar-primary); border-color: var(--solar-primary); color: #3b2300; }
 .sim-chip.try { border-style: dashed; }
 .sim-chip:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
@@ -175,19 +153,6 @@
 }
 @media (max-width: 760px) { .sim-nums { grid-template-columns: minmax(0, 1fr); } }
 
-/* ── Kabel listrik yang tumbuh di tepi kiri (padanan "vine") ─── */
-.pvine { display: none; }
-@media (min-width: 1240px) {
-  .pvine { display: block; position: sticky; top: 0; height: 0; z-index: 4; pointer-events: none; }
-  .pvine-in { position: absolute; left: 6px; top: 0; width: min(46px, 6vh); height: 100vh; }
-  .pvine-in svg { width: 100%; height: 100%; display: block; overflow: visible; }
-}
-.pv-track { fill: none; stroke: rgba(138, 106, 74, 0.28); stroke-width: 1.6; stroke-dasharray: 2 5; stroke-linecap: round; }
-.pv-wire { fill: none; stroke: var(--metal-dark); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.pv-bulb { fill: var(--border-medium); transform-box: fill-box; transform-origin: 50% 50%; transform: scale(0.6); transition: transform 0.5s cubic-bezier(0.3, 1.7, 0.5, 1), fill 0.3s ease; }
-.pv-bulb.on { fill: var(--solar-primary); transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 158, 44, 0.8)); }
-.pv-bulb.top.on { fill: var(--eco-primary); filter: drop-shadow(0 0 6px rgba(47, 191, 113, 0.9)); }
-
 /* ── Penutup dan footer ──────────────────────────────────────── */
 .close { border-top: 1px solid var(--border-medium); padding-block: clamp(80px, 11vw, 150px); text-align: center; }
 .close-title {
@@ -205,9 +170,86 @@
 }
 .bal-btn:active { transform: scale(0.96); }
 .bal-btn:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
-.bal-btn.main { background: var(--metal-dark); color: #fff; }
+.bal-btn.main { background: var(--btn-bg); color: var(--btn-fg); }
 .bal-btn.main:hover { filter: brightness(1.2); }
-.bal-btn.line { background: transparent; color: var(--metal-dark); border-color: rgba(31, 41, 55, 0.3); }
+.bal-btn.line { background: transparent; color: var(--metal-dark); border-color: var(--border-medium); }
 .bal-btn.line:hover { border-color: var(--eco-dark); }
-.site-footer { position: relative; z-index: 3; background: #0f2820; color: #cfe8d9; }
-.sf-body { background: #0f2820; padding: 8px 0 28px; }
+.site-footer { position: relative; z-index: 3; background: #0f2820; color: #cfe8d9; overflow: hidden; }
+.sf-body { padding: clamp(48px, 7vw, 88px) 0 0; }
+.sf-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 40px clamp(24px, 4vw, 64px); }
+.sf-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -0.01em; color: #fff; text-decoration: none; }
+.sf-mark { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--eco-primary); color: #fff; }
+.sf-tag { margin: 18px 0 0; max-width: 30ch; font-size: 1.05rem; line-height: 1.55; color: #e6f3ea; font-weight: 500; }
+.sf-cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 22px; padding: 11px 20px; border-radius: 999px; background: var(--eco-primary); color: #06210f; font-weight: 800; font-size: 14px; text-decoration: none; transition: transform .15s ease, filter .15s ease; }
+.sf-cta:hover { filter: brightness(1.08); }
+.sf-cta:active { transform: scale(.96); }
+.sf-cta:focus-visible, .sf-col a:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
+.sf-col h3 { margin: 4px 0 16px; font: 700 11px var(--font-mono); letter-spacing: .16em; text-transform: uppercase; color: #6fcf9a; }
+.sf-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 11px; }
+.sf-col a { color: #cfe8d9; text-decoration: none; font-size: 15px; transition: color .15s ease; }
+.sf-col a:hover { color: #fff; }
+.sf-col p { margin: 0; font-size: 14px; line-height: 1.65; color: #9fc4ae; max-width: 32ch; }
+.sf-word {
+  margin: clamp(40px, 6vw, 72px) 0 0; font-family: var(--font-display); font-weight: 800; line-height: .78; letter-spacing: -0.06em;
+  font-size: min(15.5vw, 14rem); text-align: center; user-select: none; white-space: nowrap;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .2) 0%, rgba(255, 255, 255, .02) 85%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin-bottom: -0.1em;
+}
+.sf-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; padding: 20px 0 24px; border-top: 1px solid rgba(255, 255, 255, .12); font-size: 13px; color: #8fb6a0; position: relative; background: #0f2820; }
+.sf-bar a { color: #cfe8d9; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.sf-bar a:hover { color: #fff; }
+@media (max-width: 860px) { .sf-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sf-grid > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .sf-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.sf-event { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+.sf-logo { display: inline-flex; align-items: center; }
+.sf-logo img { height: 36px; width: auto; display: block; }
+
+/* ── FAQ: pita hijau dengan simulasi chat WhatsApp ───────────── */
+.faq-band {
+  background: linear-gradient(180deg, #176a3f 0%, #115232 100%);
+  --metal-dark: #ffffff;
+  --metal-mid: rgba(255, 255, 255, 0.82);
+  --border-soft: rgba(255, 255, 255, 0.22);
+  --border-medium: rgba(255, 255, 255, 0.34);
+  --eco-dark: #8cf2bc;
+}
+.wa {
+  display: flex; flex-direction: column; height: min(600px, 78svh); border-radius: 30px; overflow: hidden;
+  background: #0b141a; border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 40px 70px -30px rgba(0, 0, 0, 0.55), 0 0 0 7px rgba(5, 18, 12, 0.55);
+  font-family: var(--font-body); color: #e9edef;
+}
+.wa-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #1f2c34; }
+.wa-av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #e8f7ee; overflow: hidden; flex: none; }
+.wa-av .kilo-av { width: 32px; height: auto; display: block; margin-top: 3px; }
+.wa-head b { display: block; font-size: 15.5px; font-weight: 700; color: #fff; }
+.wa-head small { display: block; margin-top: 1px; font-size: 12px; color: #8fb4a2; }
+.wa-body {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px;
+  background: radial-gradient(rgba(255, 255, 255, 0.045) 1.2px, transparent 1.2px) 0 0 / 22px 22px, #0b141a;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.wa-day { align-self: center; padding: 4px 12px; border-radius: 8px; background: #182229; color: #8696a0; font-size: 11.5px; letter-spacing: .04em; }
+.wa-empty { margin: auto; color: #8696a0; font-size: 13.5px; text-align: center; max-width: 22ch; line-height: 1.5; }
+.wa-turn { display: flex; flex-direction: column; gap: 6px; }
+.wa-msg { position: relative; max-width: 86%; padding: 8px 11px 6px; border-radius: 12px; font-size: 14.5px; line-height: 1.52; animation: wa-in .32s cubic-bezier(.2, .9, .3, 1.15) both; }
+.wa-msg p { margin: 0; color: inherit; }
+.wa-msg time { display: block; margin-top: 2px; text-align: right; font-size: 10.5px; color: rgba(233, 237, 239, 0.6); }
+.wa-tick { color: #53bdeb; letter-spacing: -2px; }
+.wa-msg.out { align-self: flex-end; background: #005c4b; border-top-right-radius: 3px; transform-origin: 100% 0; }
+.wa-msg.in { align-self: flex-start; background: #202c33; border-top-left-radius: 3px; transform-origin: 0 0; }
+.wa .faq-dots i { background: #8fa3ad; }
+@keyframes wa-in { from { opacity: 0; transform: translateY(8px) scale(.94); } }
+.wa-foot { padding: 10px 12px 14px; background: #1f2c34; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.wa-hint { display: block; margin: 0 4px 8px; font: 700 10.5px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: #6fcf9a; }
+.wa-chips { display: flex; flex-direction: column; gap: 7px; }
+.wa-chip {
+  text-align: left; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(111, 207, 154, 0.5); background: transparent;
+  color: #bff0d6; font: 600 13.5px/1.35 var(--font-body); cursor: pointer; transition: background .18s ease, transform .15s ease, border-color .18s ease;
+}
+.wa-chip:hover { background: rgba(111, 207, 154, 0.14); border-color: #6fcf9a; }
+.wa-chip:active { transform: scale(.98); }
+.wa-chip:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 2px; }
+.wa-done { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: #8696a0; padding: 2px 4px; }
+@media (prefers-reduced-motion: reduce) { .wa-msg { animation: none; } }
