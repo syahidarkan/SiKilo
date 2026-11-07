@@ -6,6 +6,7 @@ import { DASHBOARD_URL } from '@/lib/waskita';
 
 const NAV_LINKS = [
   { label: 'Cerita', id: 'scroll-track' },
+  { label: 'Sehari', id: 'sehari' },
   { label: 'Simulator', id: 'simulator-section' },
   { label: 'Fitur', id: 'fitur' },
   { label: 'FAQ', id: 'faq' },
