@@ -42,6 +42,8 @@ from app.digital_twin.factory_model import (
 logger = logging.getLogger(__name__)
 
 SOLVERS = ("auto", "ortools", "ppo", "greedy")
+# Selisih biaya di bawah ini (Rupiah) dianggap nol (derau floating-point).
+SAVINGS_TOLERANCE_IDR = 0.5
 SOLVER_LABELS = {"ppo": "PPO-RL", "greedy": "Greedy-Solar"}
 
 __all__ = ["PlanResult", "plan_day", "habit_schedule", "build_problem", "default_jobs", "SOLVERS"]
@@ -80,6 +82,11 @@ class PlanResult:
     pv_used_kwh: float = 0.0
     curtail_kwh: float = 0.0
     baseline_grid_kwh: float = 0.0
+    # PV terpakai kebiasaan lama (pv − curtail dari simulasi baseline, sama cara dengan agen).
+    baseline_pv_used_kwh: float = 0.0
+    # Nilai defisit SoC baterai akhir hari (sudah termasuk di cost_idr / baseline_cost_idr).
+    soc_deficit_cost_idr: float = 0.0
+    baseline_soc_deficit_cost_idr: float = 0.0
 
 
 def default_jobs() -> list:
@@ -227,7 +234,12 @@ def plan_day(
     sim = simulate_schedule(problem, schedule)
 
     savings = base_sim.cost_idr - sim.cost_idr
+    # Biaya yang sama persis (mis. tarif flat tanpa PLTS & tanpa idle) tidak boleh
+    # tampil sebagai "-0" atau "lebih mahal" karena derau floating-point.
+    if abs(savings) < SAVINGS_TOLERANCE_IDR:
+        savings = 0.0
     savings_pct = savings / base_sim.cost_idr * 100.0 if base_sim.cost_idr > 0 else 0.0
+    savings_pct = savings_pct + 0.0  # -0.0 → 0.0
     idle_savings = base_sim.cost_idr - habit_no_idle.cost_idr
     shifting_savings = habit_no_idle.cost_idr - sim.cost_idr
 
@@ -244,8 +256,13 @@ def plan_day(
             f"Kebiasaan lama dihitung dengan mesin idle total {idle_minutes} menit "
             f"(daya idle default {settings.default_idle_power_frac:.0%} daya nominal bila tidak diisi; asumsi)."
         )
-    if savings < 0:
+    if savings < -SAVINGS_TOLERANCE_IDR:
         notes.append("Jadwal agen lebih mahal daripada kebiasaan lama untuk hari ini (penghematan negatif).")
+    if problem.has_battery:
+        notes.append(
+            "Baterai: energi yang dikuras di bawah SoC awal pada akhir hari dihitung sebagai biaya isi ulang "
+            "(tarif rata-rata ÷ efisiensi), agar baterai tidak memberi energi gratis."
+        )
     if problem.pv_source == "clearsky_scaled":
         notes.append("Kurva PLTS memakai model clear-sky × indeks kecerahan (data cuaca NASA tidak tersedia).")
     if violations:
@@ -282,4 +299,7 @@ def plan_day(
         pv_used_kwh=sim.pv_used_kwh,
         curtail_kwh=sim.curtail_kwh,
         baseline_grid_kwh=base_sim.grid_kwh,
+        baseline_pv_used_kwh=base_sim.pv_used_kwh,
+        soc_deficit_cost_idr=sim.soc_deficit_cost_idr,
+        baseline_soc_deficit_cost_idr=base_sim.soc_deficit_cost_idr,
     )

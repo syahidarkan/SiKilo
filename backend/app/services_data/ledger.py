@@ -19,10 +19,34 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tariff import tariff_idr_per_kwh
-from app.models import UMKM, EnergyLedger, Role, User
+from app.models import UMKM, EnergyLedger, Lead, Role, User
 from app.nilm.disaggregator import HourlyEnergy
+from app.nilm.profiles import BASELOAD_LABEL
 
-SHARE_ROLES: tuple[str, ...] = (Role.DISPERINAKER.value, Role.INSTALLER.value, Role.BANK.value)
+# Pihak ketiga yang boleh membaca data energi rinci (per jam / per mesin /
+# sampel mentah) UMKM yang memberi ``consent_share_data``. Disperinaker TIDAK
+# termasuk: dinas hanya melihat ringkasan agregat lewat /dashboard/disperinaker
+# dan hanya untuk UMKM yang memberi ``consent_share_gov``.
+SHARE_ROLES: tuple[str, ...] = (Role.INSTALLER.value, Role.BANK.value)
+
+
+async def installer_umkm_ids(db: AsyncSession, user: User) -> set[int]:
+    """UMKM yang ditangani installer ini (lead ditugaskan/diambil, status bukan 'lost')."""
+    result = await db.execute(
+        select(Lead.umkm_id).where(Lead.installer_user_id == user.id, Lead.status != "lost")
+    )
+    return {int(x) for x in result.scalars().all()}
+
+
+async def ensure_installer_assigned(db: AsyncSession, user: User, umkm_id: int) -> None:
+    """403 bila ``user`` installer tetapi tidak ditugaskan ke UMKM ini. Admin selalu lolos."""
+    if user.role == Role.ADMIN.value:
+        return
+    if user.role != Role.INSTALLER.value or umkm_id not in await installer_umkm_ids(db, user):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Installer hanya dapat mengelola UMKM yang rujukannya ditugaskan kepadanya",
+        )
 
 
 # ── Akses ───────────────────────────────────────────────────────────────────
@@ -68,11 +92,18 @@ def check_range(start: date, end: date, max_days: int = 366) -> None:
 
 # ── Tulis ───────────────────────────────────────────────────────────────────
 def aggregate_entries(entries: Iterable[HourlyEnergy]) -> dict[tuple[date, int, str], float]:
+    """
+    Jumlahkan energi per (hari, jam, label). Baris 0 kWh untuk label beban
+    dasar TETAP ditulis sebagai penanda cakupan data: jam tanpa konsumsi
+    (mis. listrik dimatikan malam hari) tetap dihitung "tercatat" sehingga
+    hari itu bisa lengkap untuk sizing/rapor.
+    """
     out: dict[tuple[date, int, str], float] = defaultdict(float)
     for e in entries:
-        if e.kwh <= 0:
+        label = e.appliance_label[:80]
+        if e.kwh < 0 or (e.kwh == 0 and label != BASELOAD_LABEL):
             continue
-        out[(e.day, int(e.hour), e.appliance_label[:80])] += float(e.kwh)
+        out[(e.day, int(e.hour), label)] += max(float(e.kwh), 0.0)
     return dict(out)
 
 

@@ -101,6 +101,7 @@ class UMKMDispatchEnv(_BaseEnv):  # type: ignore[misc]
         self.problem: DispatchProblem = problem  # type: ignore[assignment]
         self.twin: UMKMDigitalTwin = UMKMDigitalTwin(machines=problem.fresh_machines() if problem else [])
         self._battery = None
+        self._soc_start_wh = 0.0
         self._current_slot = 0
         self.schedule = np.zeros((N_SLOTS, self.twin.n_machines), dtype=np.int8)
         self.total_cost_idr = 0.0
@@ -119,6 +120,7 @@ class UMKMDispatchEnv(_BaseEnv):  # type: ignore[misc]
         self.twin = UMKMDigitalTwin(machines=problem.fresh_machines())
         self.twin.reset()
         self._battery = problem.fresh_battery()
+        self._soc_start_wh = self._battery.soc_wh if self._battery is not None else 0.0
         self._current_slot = 0
         self.schedule = np.zeros((N_SLOTS, problem.n_machines), dtype=np.int8)
         self.total_cost_idr = 0.0
@@ -221,7 +223,17 @@ class UMKMDispatchEnv(_BaseEnv):  # type: ignore[misc]
         self._current_slot += 1
         terminated = self._current_slot >= N_SLOTS
         unmet = 0
+        deficit_cost = 0.0
         if terminated:
+            if self._battery is not None:
+                # Sama dengan simulate_schedule: SoC yang dikuras di bawah SoC awal dibayar di akhir hari.
+                from app.digital_twin.factory_model import soc_deficit_cost
+
+                _, deficit_cost = soc_deficit_cost(
+                    self._battery, self._soc_start_wh, self._battery.soc_wh, p.tariff_idr_per_wh
+                )
+                self.total_cost_idr += deficit_cost
+                reward -= deficit_cost * self.reward_scale
             unmet = int(sum(m.remaining_slots for m in self.twin.machines))
             if unmet:  # seharusnya mustahil karena forced-ON; penalti pengaman
                 reward -= 1_000.0 * unmet
@@ -235,6 +247,7 @@ class UMKMDispatchEnv(_BaseEnv):  # type: ignore[misc]
             "soc_wh": soc_wh,
             "effective_action": eff.copy(),
             "unmet_slots": unmet,
+            "soc_deficit_cost_idr": deficit_cost,
         }
         return self._get_obs(), float(reward), terminated, False, info
 

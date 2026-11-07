@@ -37,16 +37,41 @@ def to_local(ts: datetime) -> datetime:
     return ts.astimezone(local_tz())
 
 
+def is_too_far_future(ts: datetime, now: Optional[datetime] = None) -> bool:
+    """True bila ``ts`` lebih maju dari jam server + ``telemetry_max_future_skew_s``."""
+    now = now or datetime.now(timezone.utc)
+    return to_local(ts) > now + timedelta(seconds=settings.telemetry_max_future_skew_s)
+
+
 def _check_timestamp(ts: datetime) -> datetime:
     ts = to_local(ts)
-    limit = datetime.now(timezone.utc) + timedelta(seconds=settings.telemetry_max_future_skew_s)
-    if ts > limit:
+    if is_too_far_future(ts):
         raise ValueError("timestamp terlalu jauh di masa depan; periksa sinkronisasi jam (NTP) perangkat")
     return ts
 
 
+class TelemetrySampleBase(BaseModel):
+    """
+    Satu sampel pengukuran panel TANPA cek jam masa depan (dipakai di batch:
+    sampel bertimestamp masa depan dibuang per sampel di endpoint, bukan
+    menolak seluruh batch).
+    """
+
+    timestamp: datetime = Field(..., description="ISO 8601; tanpa zona waktu dianggap WIB")
+    v_rms: float = Field(..., ge=0.0, le=300.0, description="Tegangan RMS (Volt)")
+    i_rms: float = Field(..., ge=0.0, le=200.0, description="Arus RMS (Ampere)")
+    p_active: float = Field(..., ge=0.0, description="Daya aktif (Watt), ≥ 0")
+    q_reactive: float = Field(..., description="Daya reaktif (VAR)")
+    frequency: float = Field(..., ge=48.0, le=52.0, description="Frekuensi jaringan (Hz)")
+
+    @field_validator("timestamp")
+    @classmethod
+    def _tz_local(cls, v: datetime) -> datetime:
+        return to_local(v)
+
+
 class TelemetrySampleIn(BaseModel):
-    """Satu sampel pengukuran panel (tanpa device_id; dipakai di batch)."""
+    """Satu sampel pengukuran panel (tanpa device_id) dengan cek jam masa depan."""
 
     timestamp: datetime = Field(..., description="ISO 8601; tanpa zona waktu dianggap WIB")
     v_rms: float = Field(..., ge=0.0, le=300.0, description="Tegangan RMS (Volt)")
@@ -67,7 +92,7 @@ class TelemetryPayload(TelemetrySampleIn):
 
 class TelemetryBatch(BaseModel):
     device_id: str = Field(..., min_length=1, max_length=64)
-    samples: list[TelemetrySampleIn] = Field(..., min_length=1, max_length=MAX_BATCH_SAMPLES)
+    samples: list[TelemetrySampleBase] = Field(..., min_length=1, max_length=MAX_BATCH_SAMPLES)
 
 
 class TelemetryResponse(BaseModel):
@@ -95,6 +120,7 @@ class TelemetryBatchResponse(BaseModel):
     received: int
     processed: int
     skipped_duplicates: int
+    rejected_future: int = Field(0, description="Sampel dibuang karena timestamp terlalu jauh di masa depan")
     stored_records: int
     events: int
     ledger_rows_written: int

@@ -45,9 +45,29 @@ Modul: `app/services/` (`whatsapp_agent.py`, `whatsapp_sender.py`, `jobs.py`,
 - **Batasan Meta**: pesan teks bebas hanya boleh dalam 24 jam sejak pelanggan
   terakhir mengirim pesan ke nomor bisnis. Brief 17:30 adalah pesan inisiatif
   bisnis, jadi di produksi perlu *message template* yang disetujui Meta
-  (kategori *utility*). Implementasi saat ini hanya mengirim teks; bila Meta
-  menolak (mis. kode 131047) galatnya menyebut kebutuhan template. Menambah
-  pengiriman template adalah pekerjaan lanjutan.
+  (kategori *utility*). Isi `WHATSAPP_META_TEMPLATE_NAME` (dan
+  `WHATSAPP_META_TEMPLATE_LANG`, default `id`): pesan terjadwal (brief harian,
+  nota mingguan) lalu dikirim sebagai template dengan SATU parameter body
+  `{{1}}` berisi ringkasan pesan (baris baru → " | ", maks. 1024 karakter,
+  aturan parameter Meta). Contoh isi template: "Ringkasan listrik WASKITA:
+  {{1}}". Template harus dibuat & disetujui di Meta Business Manager terlebih
+  dahulu (belum diuji ke API Meta sungguhan dari repo ini). Bila nama template
+  kosong, pesan dikirim sebagai teks dan hanya berhasil di jendela 24 jam.
+
+## 2a. Verifikasi nomor, batas kirim, berhenti berlangganan
+
+- Nomor WA dari pendaftaran BELUM terverifikasi. Pemilik meminta kode lewat
+  `POST /api/v1/umkm/me/phone/request-otp` (kode 6 digit, berlaku
+  `WHATSAPP_OTP_TTL_S`, jeda kirim ulang `WHATSAPP_OTP_RESEND_INTERVAL_S`,
+  maks. `WHATSAPP_OTP_MAX_ATTEMPTS` percobaan) lalu `POST /umkm/me/phone/verify`.
+  Admin bisa menandai terverifikasi (`POST /umkm/{id}/phone/mark-verified`).
+  Dengan `WHATSAPP_PROVIDER=none` di luar production, kode dikembalikan sebagai
+  `dev_code` (tidak ada saluran kirim).
+- Penjadwal & `send-now` hanya mengirim ke UMKM dengan nomor terverifikasi,
+  `whatsapp_opt_out=False`, dan minimal satu akun aktif.
+- `send-now` dibatasi `WHATSAPP_SEND_NOW_MAX_PER_DAY` pesan per jenis per hari
+  per UMKM (dihitung dari `MessageLog` berstatus sent/failed); lebih dari itu 429.
+- Nama UMKM di salam pembuka dibersihkan dari tautan/domain (`safe_name`).
 - Fonnte memakai nomor WhatsApp biasa (tidak resmi dari Meta); cocok untuk
   pilot, risikonya nomor dapat dibatasi WhatsApp bila mengirim massal.
 

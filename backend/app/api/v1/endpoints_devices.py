@@ -2,8 +2,13 @@
 Registrasi & manajemen perangkat ukur (ESP32).
 
 - ``POST /devices``                       — admin/installer; mengembalikan API key SEKALI.
-- ``GET  /devices``                       — admin/installer (filter ``umkm_id``), umkm (miliknya sendiri).
+- ``GET  /devices``                       — admin (semua, filter ``umkm_id``), installer (hanya UMKM
+  yang ditugaskan kepadanya), umkm (miliknya sendiri).
 - ``POST /devices/{device_id}/rotate-key`` — admin/installer; key lama langsung tidak berlaku.
+
+Installer hanya boleh mendaftarkan, melihat, dan memutar key perangkat milik
+UMKM yang rujukannya (Lead) ditugaskan kepadanya dan statusnya bukan ``lost``.
+Admin tidak dibatasi.
 - ``GET  /devices/whoami``                — dipanggil firmware dengan ``X-Device-Key`` untuk cek key.
 """
 from __future__ import annotations
@@ -19,6 +24,7 @@ from app.core.auth import generate_api_key, get_current_device, hash_api_key, re
 from app.core.database import get_db
 from app.models import UMKM, Device, Role, User
 from app.schemas.devices import DeviceCreate, DeviceOut, DeviceWithKey
+from app.services_data.ledger import ensure_installer_assigned, installer_umkm_ids
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -41,10 +47,11 @@ async def _get_device_or_404(db: AsyncSession, device_id: str) -> Device:
 async def register_device(
     req: DeviceCreate,
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(require_roles(*_MANAGERS)),
+    user: User = Depends(require_roles(*_MANAGERS)),
 ) -> DeviceWithKey:
     if await db.get(UMKM, req.umkm_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="UMKM tidak ditemukan")
+    await ensure_installer_assigned(db, user, req.umkm_id)
     existing = await db.execute(select(Device.id).where(Device.device_id == req.device_id))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="device_id sudah terdaftar")
@@ -77,6 +84,13 @@ async def list_devices(
         if user.umkm_id is None or (umkm_id is not None and umkm_id != user.umkm_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Anda tidak memiliki akses ke UMKM ini")
         stmt = stmt.where(Device.umkm_id == user.umkm_id)
+    elif user.role == Role.INSTALLER.value:
+        allowed = await installer_umkm_ids(db, user)
+        if umkm_id is not None:
+            if umkm_id not in allowed:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="UMKM ini tidak ditugaskan kepada Anda")
+            allowed = {umkm_id}
+        stmt = stmt.where(Device.umkm_id.in_(sorted(allowed) or [-1]))
     elif umkm_id is not None:
         stmt = stmt.where(Device.umkm_id == umkm_id)
     result = await db.execute(stmt)
@@ -92,9 +106,10 @@ async def device_whoami(device: Device = Depends(get_current_device)) -> DeviceO
 async def rotate_device_key(
     device_id: str,
     db: AsyncSession = Depends(get_db),
-    _user: User = Depends(require_roles(*_MANAGERS)),
+    user: User = Depends(require_roles(*_MANAGERS)),
 ) -> DeviceWithKey:
     device = await _get_device_or_404(db, device_id)
+    await ensure_installer_assigned(db, user, device.umkm_id)
     api_key = generate_api_key()
     device.api_key_hash = hash_api_key(api_key)
     await db.commit()

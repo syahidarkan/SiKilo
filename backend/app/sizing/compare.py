@@ -118,9 +118,10 @@ def _evaluate_day(
     pv_kwh = float(np.sum(plan.pv_w) * 0.25 / 1000.0)
     habit_cost = float(plan.baseline_cost_idr)
     habit_no_idle = float(plan.baseline_no_idle_cost_idr) if jobs else habit_cost
-    # PV terpakai kebiasaan lama (dengan idle): beban − impor − ... dihitung dari grid & load.
-    habit_used = float(np.sum(plan.baseline_load_w - (plan.baseline_grid_w if plan.baseline_grid_w is not None else 0.0))
-                       * 0.25 / 1000.0)
+    # PV terpakai kebiasaan lama = Σ(pv − curtail) dari simulasi baseline (cara yang sama
+    # dengan agen). JANGAN beban − impor: dengan baterai itu ikut menghitung energi dari
+    # SoC awal sebagai "PV".
+    habit_used = float(getattr(plan, "baseline_pv_used_kwh", 0.0) or 0.0)
     best_cost = float(plan.cost_idr) if plan.deadlines_met else float("inf")
     best_used = float(plan.pv_used_kwh)
     solver = "greedy"
@@ -339,14 +340,26 @@ def compare_sizing_with_agent(request: CompareRequest, time_budget_s: Optional[f
 
     red = red_pct = capex_red = None
     reduces = False
-    if k_habit is not None and k_agent is not None:
+    # Target sudah tercapai TANPA PLTS (hanya dengan mematikan mesin idle): itu
+    # bukan efek pengurangan panel, jadi tidak dilaporkan sebagai selisih kWp/CAPEX.
+    idle_only = ordered[0].agent_savings_idr_per_year >= target - 1e-6
+    if k_habit is not None and k_agent is not None and not idle_only:
         red = k_habit - k_agent
         red_pct = red / k_habit * 100.0 if k_habit > 0 else 0.0
         capex_red = red * settings.capex_per_kwp_idr
         reduces = red > 0.01
 
     target_m = target / 12.0
-    if k_habit is not None and k_agent is not None and reduces:
+    if idle_only:
+        headline = (
+            f"Target hemat {_fmt_idr(target_m)}/bulan sudah tercapai TANPA PLTS dengan mematikan mesin yang "
+            "menganggur (idle) menurut asumsi profil mesin; tidak ada pengurangan ukuran panel yang diklaim."
+        )
+        notes.append(
+            "Penghematan pada target ini seluruhnya berasal dari asumsi menit & daya idle (kebiasaan lama), "
+            "bukan dari menggeser jam ke siang. Naikkan target untuk melihat efek jadwal agen pada ukuran PLTS."
+        )
+    elif k_habit is not None and k_agent is not None and reduces:
         headline = (
             f"Untuk hemat {_fmt_idr(target_m)}/bulan, jadwal agen butuh PLTS {k_agent:.2f} kWp, kebiasaan lama "
             f"{k_habit:.2f} kWp — panel {red_pct:.0f}% lebih kecil (CAPEX ±{_fmt_idr(capex_red)} lebih hemat)."
@@ -379,7 +392,7 @@ def compare_sizing_with_agent(request: CompareRequest, time_budget_s: Optional[f
                 f"Dengan jam lama tetapi tanpa idle dibutuhkan {k_hni:.2f} kWp; selisih terhadap jadwal agen "
                 f"({max(k_hni - k_agent, 0):.2f} kWp) adalah efek penggeseran jam saja."
             )
-    if not reduces and k_agent is not None:
+    if not reduces and not idle_only and k_agent is not None:
         notes.append(
             "Agen tidak memperkecil panel untuk kasus ini (mis. mesin sudah berjalan di siang hari atau jendela kerja "
             "sempit); manfaat agen bisa tetap ada pada tagihan harian."

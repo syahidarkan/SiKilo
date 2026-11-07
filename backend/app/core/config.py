@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     telemetry_max_future_skew_s: int = 300
     # Minimal hari data lengkap (≥ 20 jam tercatat) sebelum rekomendasi kWp dihitung.
     sizing_min_data_days: int = 7
+    # Masa berlaku token akses WebSocket: token JWT dikirim sebagai pesan
+    # pertama ({"type":"auth","token":...}), BUKAN di query string (agar tidak
+    # tercatat di log akses). Batas tunggu pesan auth & interval cek ulang akun.
+    ws_auth_timeout_s: float = 10.0
+    ws_auth_recheck_s: float = 30.0
 
     # ── NILM ────────────────────────────────────────────────────────────────
     nilm_model_path: str = "models/nilm_lgbm.pkl"
@@ -79,6 +84,15 @@ class Settings(BaseSettings):
     # Boleh mengunduh dari NASA POWER saat runtime (False = hanya cache lokal).
     # Saat pytest berjalan, unduhan selalu dimatikan oleh weather.py.
     nasa_power_allow_network: bool = True
+    # Batas koordinat yang boleh memicu unduhan NASA POWER (wilayah Indonesia);
+    # di luar kotak ini dipakai model clear-sky tanpa jaringan.
+    weather_lat_min: float = -11.5
+    weather_lat_max: float = 6.5
+    weather_lon_min: float = 94.5
+    weather_lon_max: float = 141.5
+    # Jumlah tahun-lokasi maksimum di memori (LRU) dan unduhan lokasi BARU per jam.
+    weather_memory_cache_max: int = 16
+    weather_max_new_fetches_per_hour: int = 20
     # Parameter sistem PLTS atap (tiruan digital).
     pv_tilt_deg: float = 10.0          # kemiringan panel; 0 = datar
     pv_azimuth_deg: float = 0.0        # 0 = menghadap utara (belahan bumi selatan)
@@ -154,6 +168,22 @@ class Settings(BaseSettings):
     whatsapp_meta_api_version: str = "v20.0"
     # Solver yang dipakai job harian penjadwal (auto | ortools | ppo | greedy).
     scheduler_solver: Literal["auto", "ortools", "ppo", "greedy"] = "auto"
+    # Template pesan Meta (wajib untuk pesan inisiatif bisnis di luar jendela 24 jam).
+    # Kosong = kirim teks biasa (hanya berhasil di dalam jendela 24 jam).
+    whatsapp_meta_template_name: str = ""
+    whatsapp_meta_template_lang: str = "id"
+    # Batas kirim manual (send-now) per UMKM per jenis pesan per hari.
+    whatsapp_send_now_max_per_day: int = 3
+    # Verifikasi nomor WhatsApp dengan kode OTP sebelum nomor dipakai mengirim.
+    whatsapp_otp_ttl_s: int = 600
+    whatsapp_otp_max_attempts: int = 5
+    whatsapp_otp_resend_interval_s: int = 60
+
+    # ── Rapor (dashboard bank) ─────────────────────────────────────────────
+    # Thread khusus perhitungan sizing rapor & jumlah rapor BARU yang boleh
+    # dihitung sinkron per permintaan dashboard bank (sisanya di latar belakang).
+    rapor_max_workers: int = 2
+    bank_dashboard_max_sync_compute: int = 3
 
     @property
     def is_production(self) -> bool:

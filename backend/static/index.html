@@ -277,7 +277,8 @@ canvas.wave{width:100%;height:90px;display:block}
         <div class="field"><label for="rKec">Kecamatan</label><input id="rKec" maxlength="80" placeholder="Grogol"></div>
         <div class="field"><label for="rAddr">Alamat</label><input id="rAddr" maxlength="255"></div>
       </div>
-      <label class="check"><input type="checkbox" id="rConsent"><span>Saya setuju data energi UMKM saya dibagikan ke dinas, installer, dan bank/koperasi mitra untuk penawaran PLTS &amp; kredit hijau. Bisa diubah kemudian oleh admin.</span></label>
+      <label class="check"><input type="checkbox" id="rConsent"><span>Saya setuju data energi UMKM saya (kWh per jam &amp; per mesin) dibagikan ke installer dan bank/koperasi mitra untuk penawaran PLTS &amp; kredit hijau. Bisa dicabut kapan saja.</span></label>
+      <label class="check"><input type="checkbox" id="rConsentGov"><span>Saya setuju nama usaha &amp; ringkasan energi (agregat) ditampilkan ke Disperinaker untuk program pembinaan. Bisa dicabut kapan saja.</span></label>
       <button class="btn-primary" type="submit" id="btnRegister">Buat Akun &amp; Mulai</button>
     </form>
   </div>
@@ -779,6 +780,7 @@ async function doRegister(ev) {
     phone_whatsapp: $('rPhone').value.trim() || null,
     connected_power_va: Number.isFinite(va) && va > 0 ? va : null,
     consent_share_data: $('rConsent').checked,
+    consent_share_gov: $('rConsentGov').checked,
   };
   if (payload.password.length < 8) { authMsg('authErr', 'Password minimal 8 karakter.'); return; }
   const btn = $('btnRegister'); btn.disabled = true;
@@ -1499,10 +1501,12 @@ function liveConnect() {
   if (!S.token || !hasRole('umkm', 'admin')) return;
   if (L.ws && L.ws.readyState < 2) return;
   clearTimeout(L.timer); L.stop = false;
-  const p = new URLSearchParams({token: S.token, mode: 'live'});
+  // Token dikirim sebagai pesan pertama (bukan di URL) agar tidak tercatat di log server.
+  const p = new URLSearchParams({mode: 'live'});
   if (role() === 'admin' && selectedUmkm()) p.set('umkm_id', selectedUmkm());
   let ws;
   try { ws = new WebSocket(`${WS_BASE}/ws/telemetry?${p}`); } catch { setLiveIndicator('err', 'Live: gagal membuka'); return; }
+  ws.onopen = () => ws.send(JSON.stringify({type: 'auth', token: S.token}));
   L.ws = ws;
   setLiveIndicator('off', 'Live: menyambung…');
   ws.onmessage = (e) => {
@@ -1601,7 +1605,8 @@ function buildSimPresets() {
 function setSimIndicator(on, text) { $('simDot').className = 'ws-dot' + (on ? ' on' : ''); $('simLabel').textContent = text; $('btnSimConnect').textContent = on ? 'Putuskan simulator' : 'Sambungkan simulator'; }
 function simConnect() {
   if (S.sim.ws && S.sim.ws.readyState < 2) { simDisconnect(); return; }
-  const ws = new WebSocket(`${WS_BASE}/ws/telemetry?${new URLSearchParams({token: S.token, mode: 'simulator'})}`);
+  const ws = new WebSocket(`${WS_BASE}/ws/telemetry?${new URLSearchParams({mode: 'simulator'})}`);
+  ws.onopen = () => ws.send(JSON.stringify({type: 'auth', token: S.token}));
   S.sim.ws = ws;
   setSimIndicator(false, 'Simulator: menyambung…');
   ws.onmessage = (e) => {
@@ -1671,7 +1676,7 @@ async function runBrief() {
       <dt>${sv.label}</dt><dd class="num ${sv.cls}">${sv.text}</dd><dt>Tenggat</dt><dd>${p.deadlines_met ? H`<span class="pill pill-green">Terpenuhi</span>` : H`<span class="pill pill-red">Ada yang terlewat</span>`} · ${p.solver_used || '—'}</dd></dl>
       ${(p.notes || []).length ? H`<ul class="notes mt8">${p.notes.map(n => H`<li>${n}</li>`)}</ul>` : ''}`);
   } catch (e) {
-    setHTML('briefBody', H`${errBox(e)}${e.status === 409 ? H`<div class="small muted">Profil mesin UMKM disimpan di basis data (MachineProfile) oleh admin/installer. Sementara itu, coba jadwal di halaman Jadwal Mesin.</div>` : ''}`);
+    setHTML('briefBody', H`${errBox(e)}${e.status === 409 ? H`<div class="small muted">Isi profil mesin lewat API <code>POST /api/v1/umkm/me/machines</code> (pemilik), atau minta admin/installer yang ditugaskan. Usulan dari data perangkat: <code>GET /api/v1/umkm/me/machines/suggestions</code>. Sementara itu, coba jadwal di halaman Jadwal Mesin.</div>` : ''}`);
   }
 }
 async function runNota() {

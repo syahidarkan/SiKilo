@@ -123,7 +123,52 @@ async def init_db() -> None:
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
     logger.info("Database siap (%s)", engine.url.render_as_string(hide_password=True))
+
+
+def _literal_default(column) -> Any:
+    """Nilai default skalar kolom (untuk ALTER TABLE), atau None."""
+    default = column.default
+    if default is None or not getattr(default, "is_scalar", False):
+        return None
+    return default.arg
+
+
+def _add_missing_columns(sync_conn) -> None:
+    """
+    Migrasi ADITIF ringan: tambahkan kolom baru (yang ada di model tetapi belum
+    ada di tabel lama) dengan ``ALTER TABLE … ADD COLUMN``. Tidak pernah
+    menghapus/mengubah kolom. Untuk perubahan skema yang lebih besar pakai
+    alat migrasi (Alembic).
+    """
+    from sqlalchemy import inspect as sa_inspect
+
+    insp = sa_inspect(sync_conn)
+    existing_tables = set(insp.get_table_names())
+    preparer = sync_conn.dialect.identifier_preparer
+    for table in Base.metadata.sorted_tables:
+        if table.name not in existing_tables:
+            continue
+        have = {c["name"] for c in insp.get_columns(table.name)}
+        for col in table.columns:
+            if col.name in have:
+                continue
+            col_type = col.type.compile(dialect=sync_conn.dialect)
+            ddl = f"ALTER TABLE {preparer.quote(table.name)} ADD COLUMN {preparer.quote(col.name)} {col_type}"
+            value = _literal_default(col)
+            if value is not None and not callable(value):
+                if isinstance(value, bool):
+                    lit = ("1" if value else "0") if sync_conn.dialect.name == "sqlite" else ("TRUE" if value else "FALSE")
+                elif isinstance(value, (int, float)):
+                    lit = repr(value)
+                else:
+                    lit = "'" + str(value).replace("'", "''") + "'"
+                ddl += f" DEFAULT {lit}"
+                if not col.nullable:
+                    ddl += " NOT NULL"
+            sync_conn.exec_driver_sql(ddl)
+            logger.warning("Migrasi aditif: kolom %s.%s ditambahkan.", table.name, col.name)
 
 
 async def dispose_db() -> None:

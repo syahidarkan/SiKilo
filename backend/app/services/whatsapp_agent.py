@@ -15,6 +15,7 @@ tanpa nama bulan berbahasa Inggris).
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import date
 from typing import Any, Iterable, Optional, Sequence
@@ -296,7 +297,7 @@ def generate_daily_brief(
     if target_date is None:
         target_date = _g(plan, "target_date") or date.today()
     d = brief_data(plan)
-    name = (umkm_name or "Usaha Anda").strip()[:60]
+    name = safe_name(umkm_name)
     # Turunkan detail bertahap sampai muat batas karakter WA.
     for max_machines, max_blocks, with_pv in ((10, 4, True), (8, 3, True), (6, 2, True), (5, 2, False), (3, 1, False)):
         msg = _compose_brief(name, target_date, d, max_machines, max_blocks, with_pv)
@@ -330,6 +331,38 @@ def _change_text(now: float, prev: float) -> str:
     return f"{'naik' if pct > 0 else 'turun'} {format_angka(abs(pct), 0)}%"
 
 
+_URL_RE = re.compile(
+    r"(https?://\S+|www\.\S+|\b[\w-]+(\.[\w-]+)*\.(com|id|net|org|info|xyz|ly|me|co|io|link|site|top|click|biz|app)\b\S*)",
+    re.IGNORECASE,
+)
+
+
+def safe_name(name: Optional[str], limit: int = 40) -> str:
+    """
+    Nama UMKM untuk salam pembuka pesan: tautan/domain dibuang, karakter
+    format WhatsApp (*_~`) dihapus, dipotong ``limit`` karakter. Nama berasal
+    dari input pendaftaran (tidak diverifikasi), jadi tidak boleh membawa tautan.
+    """
+    text = _URL_RE.sub("", str(name or ""))
+    text = re.sub(r"[*_~`<>\[\]{}|\\]", "", text)
+    text = " ".join(text.split()).strip(" .,-:;")
+    return (text[:limit].rstrip() or "Usaha Anda")
+
+
+def _weekly_compare(now: float, prev: float, days_now: Optional[int], days_prev: Optional[int]) -> Optional[str]:
+    """
+    Teks perbandingan minggu ini vs minggu lalu, atau ``None`` bila tidak adil
+    dibandingkan. Bila jumlah hari data berbeda, yang dibandingkan rata-rata per hari.
+    """
+    if days_now is None or days_prev is None:
+        return _change_text(now, prev)
+    if days_now <= 0 or days_prev <= 0:
+        return None
+    if days_now == days_prev:
+        return _change_text(now, prev)
+    return _change_text(now / days_now, prev / days_prev) + " rata-rata per hari"
+
+
 def _compose_weekly(
     umkm_name: str,
     week_start: date,
@@ -337,6 +370,8 @@ def _compose_weekly(
     usage: Sequence[MachineWeekUsage],
     max_lines: int,
     max_tips: int,
+    days_now: Optional[int] = None,
+    days_prev: Optional[int] = None,
 ) -> str:
     total_kwh = sum(u.kwh for u in usage)
     total_cost = sum(u.cost_idr for u in usage)
@@ -354,10 +389,19 @@ def _compose_weekly(
         parts.append("Pastikan perangkat menyala dan tersambung internet.")
         return "\n".join(parts)
 
-    parts.append(
-        f"Total: {format_angka(total_kwh)} kWh = *{format_rupiah(total_cost)}* "
-        f"({_change_text(total_cost, prev_cost)} dari minggu lalu {format_rupiah(prev_cost)})"
-    )
+    cmp_total = _weekly_compare(total_cost, prev_cost, days_now, days_prev)
+    if cmp_total is None:
+        parts.append(f"Total: {format_angka(total_kwh)} kWh = *{format_rupiah(total_cost)}*")
+        parts.append("(Belum dibandingkan dengan minggu lalu: data minggu lalu belum ada.)")
+    else:
+        parts.append(
+            f"Total: {format_angka(total_kwh)} kWh = *{format_rupiah(total_cost)}* "
+            f"({cmp_total} dari minggu lalu {format_rupiah(prev_cost)})"
+        )
+    if days_now is not None and days_prev is not None and days_prev > 0 and days_now != days_prev:
+        parts.append(f"Data tercatat: minggu ini {days_now} hari, minggu lalu {days_prev} hari.")
+    elif days_now is not None and 0 < days_now < 7:
+        parts.append(f"Data minggu ini baru {days_now} dari 7 hari.")
     machines = sorted(
         (u for u in usage if u.label != BASELOAD_LABEL and (u.kwh > 1e-9 or u.prev_kwh > 1e-9)),
         key=lambda u: u.cost_idr,
@@ -366,9 +410,9 @@ def _compose_weekly(
     base = next((u for u in usage if u.label == BASELOAD_LABEL), None)
     shown = machines[:max_lines]
     for u in shown:
-        parts.append(
-            f"- {u.label}: {format_angka(u.kwh)} kWh, {format_rupiah(u.cost_idr)} ({_change_text(u.cost_idr, u.prev_cost_idr)})"
-        )
+        cmp = _weekly_compare(u.cost_idr, u.prev_cost_idr, days_now, days_prev)
+        suffix = f" ({cmp})" if cmp is not None else ""
+        parts.append(f"- {u.label}: {format_angka(u.kwh)} kWh, {format_rupiah(u.cost_idr)}{suffix}")
     if len(machines) > len(shown):
         rest = machines[len(shown):]
         parts.append(f"- Lainnya ({len(rest)} mesin): {format_rupiah(sum(u.cost_idr for u in rest))}")
@@ -403,17 +447,25 @@ def generate_weekly_nota(
     week_start: date,
     week_end: date,
     usage: Sequence[MachineWeekUsage | dict],
+    *,
+    days_this_week: Optional[int] = None,
+    days_prev_week: Optional[int] = None,
 ) -> str:
     """
     Nota mingguan (< 1000 karakter): kWh & Rp per mesin minggu ini vs minggu
     lalu, mesin paling boros, dan tips idle dari pemakaian di luar jam kerja.
 
     ``usage`` biasanya dibuat oleh ``app.services.jobs.weekly_usage``.
+    ``days_this_week`` / ``days_prev_week``: jumlah hari yang punya data. Bila
+    berbeda, perbandingan memakai rata-rata per hari; bila minggu lalu kosong,
+    perbandingan dihilangkan (bukan "naik X%").
     """
     items = [u if isinstance(u, MachineWeekUsage) else MachineWeekUsage(**u) for u in usage]
-    name = (umkm_name or "Usaha Anda").strip()[:60]
+    name = safe_name(umkm_name)
     for max_lines, max_tips in ((8, 2), (6, 2), (4, 1), (3, 1), (2, 1)):
-        msg = _compose_weekly(name, week_start, week_end, items, max_lines, max_tips)
+        msg = _compose_weekly(
+            name, week_start, week_end, items, max_lines, max_tips, days_this_week, days_prev_week
+        )
         if len(msg) <= MAX_MESSAGE_CHARS:
             return msg
     return msg[: MAX_MESSAGE_CHARS - 1] + "…"
@@ -429,4 +481,5 @@ __all__ = [
     "format_rentang",
     "generate_daily_brief",
     "generate_weekly_nota",
+    "safe_name",
 ]

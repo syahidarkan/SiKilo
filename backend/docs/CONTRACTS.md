@@ -27,15 +27,19 @@ Bahasa teks untuk pengguna: Bahasa Indonesia.
 - `app/models/__init__.py` mengekspor model SQLAlchemy 2.0 (Mapped):
   - `User(id, username, hashed_password, full_name, email, role, umkm_id?, is_active, created_at)`
     role ∈ `umkm | disperinaker | installer | bank | admin`
-  - `UMKM(id, name, umkm_type, address, kecamatan, phone_whatsapp?, connected_power_va?, tariff_group, pv_kwp, battery_kwh, consent_share_data, created_at)`
+  - `UMKM(id, name, umkm_type, address, kecamatan, phone_whatsapp?, connected_power_va?, tariff_group, pv_kwp, battery_kwh, consent_share_data, consent_share_gov, consent_updated_at?, phone_verified_at?, phone_otp_hash?, phone_otp_expires_at?, phone_otp_sent_at?, phone_otp_attempts, whatsapp_opt_out, created_at)`
+    - `consent_share_data`: data rinci boleh dibaca **installer & bank** (bukan Disperinaker).
+    - `consent_share_gov`: nama & ringkasan agregat boleh tampil di dashboard **Disperinaker**.
+    - Nomor WA hanya dipakai mengirim bila `phone_verified_at` terisi (OTP) dan `whatsapp_opt_out` False.
   - `Device(id, device_id[unique], umkm_id, api_key_hash, firmware_version?, last_seen?, created_at)`
   - `TelemetryRecord(id, device_id, ts, v_rms, i_rms, p_active, q_reactive, frequency)`
   - `ApplianceEvent(id, umkm_id, device_id, ts, event_type, appliance_class, label, delta_p, confidence, source)`
   - `EnergyLedger(id, umkm_id, day[date], hour, appliance_label, kwh, cost_idr)` unik (umkm_id, day, hour, appliance_label)
-  - `MachineProfile(id, umkm_id, machine_id, label, appliance_class, power_w, daily_runtime_minutes, earliest_hour, deadline_hour, habit_start_hour?, is_flexible, min_continuous_minutes)`
+  - `MachineProfile(id, umkm_id, machine_id, label, appliance_class, power_w, daily_runtime_minutes, earliest_hour, deadline_hour, habit_start_hour?, is_flexible, min_continuous_minutes, idle_minutes_habit, idle_power_w?, cooldown_minutes?)` — dipetakan 1:1 ke `MachineJob` oleh `jobs.profiles_to_jobs`.
   - `DailyPlan(id, umkm_id, day, solver, cost_idr, baseline_cost_idr, savings_idr, savings_pct, deadlines_met, payload_json, created_at)`
   - `MessageLog(id, umkm_id, kind[daily|weekly], provider, status[sent|failed|skipped], body, error?, created_at)`
-  - `Lead(id, umkm_id, installer_user_id?, status[new|contacted|surveyed|installed|lost], recommended_kwp, notes?, created_at, updated_at)`
+  - `Lead(id, umkm_id, installer_user_id?, status[new|contacted|surveyed|installed|lost], recommended_kwp, notes?, requested_by_umkm, created_at, updated_at)`
+- `init_db()` juga menjalankan migrasi ADITIF ringan (`ALTER TABLE … ADD COLUMN` untuk kolom baru); perubahan skema lain butuh alat migrasi.
 - `app/core/auth.py`: `hash_password`, `verify_password`, `create_access_token(data)`,
   `get_current_user` (dependency → `User`), `require_roles(*roles)` (dependency factory),
   `get_current_device` (dependency dari header `X-Device-Key` → `Device`).
@@ -94,6 +98,12 @@ Bahasa teks untuk pengguna: Bahasa Indonesia.
   ```
 - `MachineJob` di `app/schemas/dispatch.py` memiliki: `machine_id, appliance_class, label, power_w, daily_runtime_minutes, earliest_hour=settings.work_start_hour, deadline_hour=settings.work_end_hour, habit_start_hour: int | None, min_continuous_minutes=15, is_flexible=True`.
 - Baseline = **kebiasaan lama pemilik**, BUKAN "semua mesin nyala 24 jam".
+- `MachineJob` juga punya `idle_minutes_habit`, `idle_power_w?`, `cooldown_minutes?`.
+- `factory_model.simulate_schedule` menilai **defisit SoC baterai akhir hari** (SoC awal − SoC akhir)
+  sebagai biaya isi ulang (`÷ η_charge × tarif rata-rata`) dan menambahkannya ke `cost_idr`
+  (`SimResult.soc_deficit_cost_idr`); OR-Tools & env RL memakai penilaian yang sama.
+- `PlanResult` tambahan: `baseline_pv_used_kwh` (Σ pv − curtail baseline), `soc_deficit_cost_idr`,
+  `baseline_soc_deficit_cost_idr`. Selisih biaya < Rp 0,5 dianggap 0 (`savings_idr` tidak pernah −0.0).
 
 ## 5. Sizing (`app/sizing/`)
 
@@ -103,8 +113,13 @@ Bahasa teks untuk pengguna: Bahasa Indonesia.
 ## 6. Layanan (`app/services/`)
 
 - `whatsapp_agent.generate_daily_brief(plan: PlanResult | DispatchResponse, umkm_name, target_date) -> str`
-- `whatsapp_agent.generate_weekly_nota(...) -> str`
-- `whatsapp_sender.send_whatsapp(phone, body) -> SendResult(status, provider, error)`
+- `whatsapp_agent.generate_weekly_nota(umkm_name, week_start, week_end, usage, *, days_this_week=None, days_prev_week=None) -> str`
+  (bila jumlah hari data berbeda → bandingkan rata-rata per hari; minggu lalu kosong → tanpa perbandingan).
+- `whatsapp_agent.safe_name(name) -> str` (nama untuk salam: tanpa tautan/format).
+- `whatsapp_sender.send_whatsapp(phone, body, *, scheduled=False) -> SendResult(status, provider, error)`
+  (`scheduled=True` + Meta + `whatsapp_meta_template_name` → pesan template).
+- `jobs.measured_baseload_w(db, umkm_id, end=None, days=14) -> float | None` (median label baseload ledger × 1000).
+- `jobs.send_block_reason(db, umkm) -> str | None`, `jobs.sends_today(db, umkm_id, kind) -> int`.
 - `scorecard_generator.generate_bankability_scorecard(...) -> dict` dan `render_scorecard_pdf(scorecard: dict) -> bytes`
 - `scheduler.start_scheduler()` / `scheduler.shutdown_scheduler()` (APScheduler, no-op bila `settings.scheduler_enabled` False).
 
@@ -112,4 +127,22 @@ Bahasa teks untuk pengguna: Bahasa Indonesia.
 
 - `POST /api/v1/telemetry/ingest`, header `X-Device-Key: <key>`, body `TelemetryPayload` (lihat `app/schemas/telemetry.py`).
 - `POST /api/v1/telemetry/ingest-batch`, header sama, body `{"device_id": str, "samples": [TelemetryPayload tanpa device_id …]}` untuk mengirim buffer offline (maks. 500 sampel).
-- Device diregistrasi via `POST /api/v1/devices` (role admin/installer) yang mengembalikan API key sekali saja.
+  Sampel bertimestamp > `telemetry_max_future_skew_s` di masa depan dibuang per sampel (respons 200,
+  `rejected_future`), bukan 422 untuk seluruh batch.
+- Device diregistrasi via `POST /api/v1/devices` (admin, atau installer yang **ditugaskan** ke UMKM itu lewat
+  Lead berstatus ≠ lost) yang mengembalikan API key sekali saja; aturan sama untuk `rotate-key` & daftar perangkat.
+
+## 8. Profil UMKM & mesin (`/api/v1/umkm`, `app/api/v1/endpoints_umkm.py`)
+
+- `GET/PATCH /umkm/{id|me}` — pemilik & admin (semua field); installer yang ditugaskan hanya
+  `pv_kwp`, `battery_kwh`, `connected_power_va`. Mengganti nomor WA membatalkan verifikasi.
+  Mencabut consent menghapus cache rapor UMKM itu.
+- `POST /umkm/me/phone/request-otp`, `POST /umkm/me/phone/verify`, `POST /umkm/{id}/phone/mark-verified` (admin).
+- `GET/POST /umkm/{id|me}/machines`, `PATCH/DELETE /umkm/{id|me}/machines/{machine_id}`,
+  `GET /umkm/{id|me}/machines/suggestions` (usulan dari ledger NILM, tidak disimpan otomatis).
+- `PATCH /dashboard/leads/{id}` dengan `status="installed"` wajib `installed_kwp` → disalin ke `UMKM.pv_kwp`.
+
+## 9. WebSocket (`/ws/telemetry`)
+
+- Token JWT dikirim sebagai pesan pertama `{"type":"auth","token":...}`; `?token=` di query ditolak (4401).
+- Masa berlaku token & status akun dicek ulang tiap `settings.ws_auth_recheck_s` detik (4401/4403).

@@ -57,6 +57,11 @@ def new_disaggregator(max_instances: Optional[dict[str, int]] = None) -> LoadDis
     return LoadDisaggregator(classifier=shared_classifier(), max_instances_per_label=max_instances or None)
 
 
+def replay_max_gap_s() -> float:
+    """Δt maksimum saat memutar ulang sampel tersimpan: 2× interval simpan (min. 20 s)."""
+    return float(max(2 * max(settings.telemetry_raw_keep_every_s, 1), 20))
+
+
 def to_nilm_sample(s: TelemetrySampleIn | Any, ts_local: Optional[datetime] = None) -> TelemetrySample:
     return TelemetrySample(
         timestamp=ts_local if ts_local is not None else to_local(s.timestamp),
@@ -155,6 +160,15 @@ class IngestService:
     def forget(self, device_id: str) -> None:
         self._states.pop(device_id, None)
 
+    async def refresh_machine_caps(self, db: AsyncSession, umkm_id: int) -> None:
+        """Perbarui batas unit per label (dari MachineProfile) pada disaggregator yang sedang berjalan."""
+        states = [st for st in self._states.values() if st.umkm_id == umkm_id]
+        if not states:
+            return
+        caps = await self._machine_caps(db, umkm_id)
+        for st in states:
+            st.disaggregator.max_instances_per_label = caps or None
+
     def has_state(self, device_id: str) -> bool:
         return device_id in self._states
 
@@ -230,10 +244,19 @@ class IngestService:
             .order_by(TelemetryRecord.ts)
         )
         n = 0
-        for rec in result.scalars():
-            local = to_local(rec.ts)
-            st.disaggregator.push(to_nilm_sample(rec, local))
-            n += 1
+        # Sampel tersimpan berjarak ~telemetry_raw_keep_every_s (bisa sedikit lebih,
+        # mis. 10–11 s). Selama replay, Δt maksimum dilonggarkan agar energi tidak
+        # terpotong (tanpa ini jam replay kurang ±5 %); setelahnya dikembalikan.
+        dis = st.disaggregator
+        normal_gap = dis.max_gap_s
+        dis.max_gap_s = max(normal_gap, replay_max_gap_s())
+        try:
+            for rec in result.scalars():
+                local = to_local(rec.ts)
+                dis.push(to_nilm_sample(rec, local))
+                n += 1
+        finally:
+            dis.max_gap_s = normal_gap
         st.last_ts = last_local
         st.last_kept_ts = last_local
         st.replayed_records = n

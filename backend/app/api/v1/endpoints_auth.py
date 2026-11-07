@@ -29,6 +29,7 @@ from app.core.auth import (
 from app.core.config import settings
 from app.core.database import get_db
 from app.models import UMKM, Role, User
+from app.models.types import utcnow
 from app.schemas.auth import (
     AdminUserCreate,
     RegisterRequest,
@@ -60,6 +61,8 @@ def _umkm_from_schema(data: UMKMCreate) -> UMKM:
         connected_power_va=data.connected_power_va,
         tariff_group=settings.tariff_group,
         consent_share_data=data.consent_share_data,
+        consent_share_gov=data.consent_share_gov,
+        consent_updated_at=utcnow() if (data.consent_share_data or data.consent_share_gov) else None,
     )
 
 

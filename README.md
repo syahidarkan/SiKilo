@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WASKITA — Agen AI Pengatur Energi untuk UMKM
 
-## Getting Started
+WASKITA membantu UMKM melihat mesin paling boros listrik dari **satu titik ukur**, menyusun jadwal mesin harian yang lebih hemat, lalu menghitung **ukuran PLTS atap yang tepat setelah jadwal dioptimalkan** (ekspor ke PLN tidak dikreditkan, Permen ESDM No. 2/2024).
+UNS Innovation Hackathon 2026 · Energy Track · Subtema C.
 
-First, run the development server:
+| Tahap | Isi | Lokasi |
+|---|---|---|
+| **Tahu** | Kotak sensor ESP32 + SCT-013 + ZMPT101B, NILM (pemisah beban) → kWh & Rp per mesin per jam | `firmware/`, `backend/app/nilm/` |
+| **Atur** | Tiruan digital (cuaca NASA POWER, baterai, pola pesanan) + agen penjadwal (OR-Tools, behavior cloning + MaskablePPO, action masking) | `backend/app/digital_twin/`, `backend/app/agent/` |
+| **Hemat** | Saran jadwal sore & nota mingguan via WhatsApp | `backend/app/services/` |
+| **Punya PLTS** | Sizing PLTS setelah jadwal agen, rapor energi (PDF) | `backend/app/sizing/` |
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Struktur repo
+
+```
+app/, components/, styles/   Landing page (Next.js) + simulator yang memanggil backend
+lib/waskita.ts               Jembatan landing page ↔ backend
+backend/                     API FastAPI, dasbor web (backend/static), tes, dokumentasi (backend/docs)
+firmware/waskita-sensor/     Firmware kotak sensor ESP32 (PlatformIO)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Menjalankan secara lokal
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Backend + dasbor** (Python 3.12):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd backend
+python -m venv .venv
+.venv/Scripts/pip install -r requirements.txt     # Linux/macOS: .venv/bin/pip
+cp .env.example .env                              # isi SECRET_KEY & BOOTSTRAP_ADMIN_*
+.venv/Scripts/python -m uvicorn app.main:app --port 8000
+```
 
-## Learn More
+- Dasbor: http://localhost:8000 · API docs: http://localhost:8000/docs
+- Opsional melatih agen RL: `pip install -r requirements-rl.txt` lalu `python scripts/train_agent.py`
+- Tes: `.venv/Scripts/python -m pytest -q`
 
-To learn more about Next.js, take a look at the following resources:
+**Landing page** (Node 20):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm ci
+cp .env.example .env.local    # NEXT_PUBLIC_WASKITA_API_URL=http://localhost:8000
+npm run dev                   # http://localhost:3000
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Firmware:** lihat `firmware/README.md` (kalibrasi, pengkabelan, catatan keselamatan PUIL).
 
-## Deploy on Vercel
+## Status validasi (jujur)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Semua angka akurasi saat ini berasal dari **data sintetis/contoh** dan ditandai *belum divalidasi*:
+metrik NILM (`backend/models/nilm_metrics.json`), selisih tagihan tiruan digital (`backend/models/twin_validation.json`), dan estimasi simulator.
+Validasi lapangan (smart plug sebagai pembanding, tagihan PLN nyata UMKM uji) adalah langkah berikutnya menuju TKT 5.
+Firmware belum dikompilasi/diuji pada perangkat ESP32 nyata.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Dokumentasi teknis: `backend/docs/` (CONTRACTS, NILM, DIGITAL_TWIN, AGENT, SIZING, WHATSAPP, API_DASHBOARD).

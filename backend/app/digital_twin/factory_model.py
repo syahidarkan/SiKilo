@@ -408,11 +408,31 @@ class SimResult:
     grid_w: np.ndarray
     curtail_w: np.ndarray
     cost_slot_idr: np.ndarray
-    cost_idr: float
+    cost_idr: float               # biaya impor PLN + nilai defisit SoC akhir hari (lihat bawah)
     soc_wh: Optional[np.ndarray]
     grid_kwh: float
     pv_used_kwh: float
     curtail_kwh: float
+    soc_deficit_wh: float = 0.0           # SoC awal − SoC akhir (≥ 0), sisi DC baterai
+    soc_deficit_cost_idr: float = 0.0     # biaya mengisi ulang defisit itu dari PLN
+
+
+def soc_deficit_cost(battery: Battery, soc_start_wh: float, soc_end_wh: float, tariff_idr_per_wh: np.ndarray) -> tuple[float, float]:
+    """
+    Nilai energi baterai yang "dipinjam" dalam satu hari.
+
+    Simulasi harian mulai dari SoC awal yang sama; tanpa koreksi, energi yang
+    dikuras sampai SoC minimum di akhir hari menjadi energi GRATIS (≈30 %
+    kapasitas per hari, bahkan pada kWp = 0). Defisit (SoC awal − SoC akhir)
+    dinilai sebagai energi AC yang harus diimpor untuk mengisi ulang:
+    defisit_DC ÷ η_charge × tarif rata-rata. Surplus akhir hari tidak
+    dikreditkan (konservatif).
+    """
+    deficit = max(float(soc_start_wh) - float(soc_end_wh), 0.0)
+    if deficit <= 1e-9:
+        return 0.0, 0.0
+    avg_tariff = float(np.mean(tariff_idr_per_wh))
+    return deficit, deficit / max(battery.eta_charge, 1e-6) * avg_tariff
 
 
 def simulate_schedule(
@@ -422,7 +442,9 @@ def simulate_schedule(
 ) -> SimResult:
     """
     Evaluasi biaya satu jadwal dengan PV, beban dasar, tarif, dan baterai
-    yang sama. Baterai mulai dari SoC awal yang sama setiap evaluasi.
+    yang sama. Baterai mulai dari SoC awal yang sama setiap evaluasi; defisit
+    SoC di akhir hari dinilai dengan ``soc_deficit_cost`` dan ditambahkan ke
+    ``cost_idr`` (agar baterai tidak memberi energi gratis tiap hari).
     """
     sched = np.asarray(schedule, dtype=np.float64).reshape(N_SLOTS, problem.n_machines)
     load = problem.base_load_w + (sched @ problem.power_w if problem.n_machines else 0.0)
@@ -430,9 +452,14 @@ def simulate_schedule(
         load = load + np.asarray(extra_load_w, dtype=np.float64)
     net = problem.pv_w - load
     battery = problem.fresh_battery()
+    deficit_wh = deficit_cost = 0.0
     if battery is not None:
-        run = battery.run(net, dt_h=SLOT_HOURS, reset=True)
+        soc_start = battery.soc_wh
+        run = battery.run(net, dt_h=SLOT_HOURS, reset=False)
         grid_wh, curtail_wh, soc = run.grid_import_wh, run.curtail_wh, run.soc_wh
+        deficit_wh, deficit_cost = soc_deficit_cost(
+            battery, soc_start, float(soc[-1]) if len(soc) else soc_start, problem.tariff_idr_per_wh
+        )
     else:
         grid_wh = np.clip(-net, 0.0, None) * SLOT_HOURS
         curtail_wh = np.clip(net, 0.0, None) * SLOT_HOURS
@@ -444,9 +471,11 @@ def simulate_schedule(
         grid_w=grid_wh / SLOT_HOURS,
         curtail_w=curtail_wh / SLOT_HOURS,
         cost_slot_idr=cost_slot,
-        cost_idr=float(cost_slot.sum()),
+        cost_idr=float(cost_slot.sum()) + deficit_cost,
         soc_wh=soc,
         grid_kwh=float(grid_wh.sum() / 1000.0),
         pv_used_kwh=float((pv_wh - curtail_wh).sum() / 1000.0),
         curtail_kwh=float(curtail_wh.sum() / 1000.0),
+        soc_deficit_wh=deficit_wh,
+        soc_deficit_cost_idr=deficit_cost,
     )

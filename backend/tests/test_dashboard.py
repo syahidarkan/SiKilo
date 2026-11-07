@@ -86,9 +86,10 @@ def test_umkm_dashboard(client, make_user, make_device, db_call, admin_headers, 
 # ── Disperinaker ────────────────────────────────────────────────────────────
 def test_disperinaker_aggregate_respects_consent(client, make_user, db_call, disperinaker_user, umkm_user):
     kec = f"Kec-{datetime.now().timestamp():.0f}"
-    a = make_user("umkm", kecamatan=kec, consent_share_data=True)
-    b = make_user("umkm", kecamatan=kec, consent_share_data=True)
-    hidden = make_user("umkm", kecamatan=kec, consent_share_data=False)
+    a = make_user("umkm", kecamatan=kec, consent_share_data=False, consent_share_gov=True)
+    b = make_user("umkm", kecamatan=kec, consent_share_data=True, consent_share_gov=True)
+    # consent bank/installer saja TIDAK membuka data ke dinas
+    hidden = make_user("umkm", kecamatan=kec, consent_share_data=True, consent_share_gov=False)
     _seed_days(db_call, a.umkm_id, 8)
     _seed_days(db_call, b.umkm_id, 2)
     _seed_days(db_call, hidden.umkm_id, 8)
@@ -130,12 +131,15 @@ def test_lead_lifecycle(client, make_user, db_call, admin_headers):
     r = client.post("/api/v1/dashboard/leads", json={"recommended_kwp": 5}, headers=owner.headers)
     assert r.status_code == 403
 
-    # installer melihat lead terbuka, lalu mengambilnya
+    # installer melihat lead terbuka (TANPA kontak), lalu mengambilnya (kontak tampil)
     seen = client.get("/api/v1/dashboard/leads", headers=inst1.headers).json()
     assert lead["id"] in {x["id"] for x in seen}
+    open_item = next(x for x in seen if x["id"] == lead["id"])
+    assert open_item["phone_whatsapp"] is None and open_item["address"] is None
     r = client.patch(f"/api/v1/dashboard/leads/{lead['id']}", json={"status": "contacted"}, headers=inst1.headers)
     assert r.status_code == 200, r.text
     assert r.json()["installer_user_id"] == inst1.id and r.json()["status"] == "contacted"
+    assert r.json()["phone_whatsapp"]  # lead diajukan UMKM sendiri → kontak untuk installer yang menangani
 
     # installer lain tidak melihat & tidak bisa mengubah
     assert lead["id"] not in {x["id"] for x in client.get("/api/v1/dashboard/leads", headers=inst2.headers).json()}
@@ -175,7 +179,8 @@ def test_lead_without_data_has_zero_kwp(client, umkm_user):
 
 
 # ── Bank ────────────────────────────────────────────────────────────────────
-def test_bank_dashboard(client, make_user, db_call, bank_user, umkm_user, _fake_sizing):
+def test_bank_dashboard(client, make_user, db_call, bank_user, umkm_user, _fake_sizing, monkeypatch):
+    monkeypatch.setattr(settings, "bank_dashboard_max_sync_compute", 10_000)
     ready = make_user("umkm", consent_share_data=True)
     hidden = make_user("umkm", consent_share_data=False)
     _seed_days(db_call, ready.umkm_id, 10)
@@ -285,3 +290,56 @@ def test_kpi_twin_metric_from_file(tmp_path):
     bad = tmp_path / "rusak.json"
     bad.write_text("{bukan json", encoding="utf-8")
     assert kpi.twin_bill_error_metric(str(bad))["status"] == "belum_ada_data"
+
+
+def test_admin_lead_hides_contact_of_nonconsent_umkm(client, make_user, admin_headers):
+    u = make_user("umkm", consent_share_data=False, phone_whatsapp="081299998888")
+    inst = make_user("installer")
+    other = make_user("installer")
+    r = client.post("/api/v1/dashboard/leads", json={"umkm_id": u.umkm_id, "recommended_kwp": 2.0},
+                    headers=admin_headers)
+    assert r.status_code == 201
+    lead_id = r.json()["id"]
+    for who in (inst, other):
+        item = next(x for x in client.get("/api/v1/dashboard/leads", headers=who.headers).json() if x["id"] == lead_id)
+        assert item["phone_whatsapp"] is None and item["address"] is None
+    # bahkan setelah diambil: lead buatan admin & UMKM tanpa consent → kontak tetap tertutup
+    r = client.patch(f"/api/v1/dashboard/leads/{lead_id}", json={"status": "contacted"}, headers=inst.headers)
+    assert r.status_code == 200 and r.json()["phone_whatsapp"] is None
+
+
+def test_lead_installed_updates_umkm_pv(client, make_user, admin_headers):
+    owner = make_user("umkm")
+    inst = make_user("installer")
+    r = client.post("/api/v1/dashboard/leads",
+                    json={"umkm_id": owner.umkm_id, "installer_user_id": inst.id, "recommended_kwp": 3.0},
+                    headers=admin_headers)
+    lead_id = r.json()["id"]
+    r = client.patch(f"/api/v1/dashboard/leads/{lead_id}", json={"status": "installed"}, headers=inst.headers)
+    assert r.status_code == 422  # kWp terpasang wajib diisi
+    r = client.patch(f"/api/v1/dashboard/leads/{lead_id}",
+                     json={"status": "installed", "installed_kwp": 2.7, "installed_battery_kwh": 5},
+                     headers=inst.headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["pv_kwp"] == pytest.approx(2.7)
+    me = client.get("/api/v1/umkm/me", headers=owner.headers).json()
+    assert me["pv_kwp"] == pytest.approx(2.7) and me["battery_kwh"] == pytest.approx(5)
+
+
+def test_bank_dashboard_limits_sync_compute(client, make_user, db_call, bank_user, monkeypatch, _fake_sizing):
+    """Perhitungan rapor baru per permintaan dibatasi; sisanya 'diproses' lalu selesai di latar belakang."""
+    import time as _time
+
+    monkeypatch.setattr(settings, "bank_dashboard_max_sync_compute", 0)
+    u = make_user("umkm", consent_share_data=True)
+    _seed_days(db_call, u.umkm_id, 8)
+    status_seen = None
+    for _ in range(50):
+        r = client.get("/api/v1/dashboard/bank", params={"limit": 200}, headers=bank_user.headers)
+        assert r.status_code == 200, r.text
+        status_seen = {i["umkm_id"]: i for i in r.json()["items"]}[u.umkm_id]["rapor"]["status"]
+        if status_seen == "ok":
+            break
+        assert status_seen == "diproses"
+        _time.sleep(0.05)
+    assert status_seen == "ok"

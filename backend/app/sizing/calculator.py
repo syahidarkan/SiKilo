@@ -167,16 +167,31 @@ def calculate_optimal_sizing(request: SizingRequest, solar: Any = None) -> Sizin
             np.linspace(i_best, len(grid) - 1, min(MAX_BATTERY_KWP_POINTS, len(grid) - i_best)),
             np.linspace(0, i_best, min(3, i_best + 1)),
         ]).round().astype(int))
+        # Simulasi baterai (berurutan per hari) hanya memakai ≤ 14 hari terakhir tiap
+        # bulan agar cepat. Supaya kandidat baterai & tanpa baterai dibandingkan pada
+        # DATA YANG SAMA, manfaat baterai diukur sebagai selisih terhadap kandidat
+        # tanpa baterai pada subset yang sama, lalu ditambahkan ke hasil tanpa
+        # baterai pada data penuh:
+        #   X_bat = X_nobat_penuh + (X_bat_subset − X_nobat_subset)
+        # sehingga tagihan awal, beban, dan hemat konsisten (baterai sangat kecil
+        # ≈ tanpa baterai, bukan "hemat" palsu dari perbedaan hari).
         bat_loads = {m: L[-BATTERY_MAX_DAYS_PER_MONTH:] for m, L in loads.items()}
+        kidx = [int(i) for i in idx]
+        nb_sub = annual_no_battery([float(grid[i]) for i in kidx], rep_days, bat_loads, tariff)
         for b in options:
-            for i in idx:
+            for j, i in enumerate(kidx):
                 k = float(grid[i])
                 e = annual_with_battery(k, b, rep_days, bat_loads, tariff)
-                fin = evaluate_finance(float(e.savings_idr[0]), float(e.generation_kwh[0]), k, b)
+                d_sav = float(e.savings_idr[0]) - float(nb_sub.savings_idr[j])
+                d_used = float(e.used_kwh[0]) - float(nb_sub.used_kwh[j])
+                gen = float(energy.generation_kwh[i])
+                used = min(max(float(energy.used_kwh[i]) + d_used, 0.0), gen, load_kwh)
+                sav = min(max(float(energy.savings_idr[i]) + d_sav, 0.0), bill_before)
+                fin = evaluate_finance(sav, gen, k, b)
                 rows.append(dict(
-                    kwp=k, battery_kwh=b, sc=float(e.self_consumption[0]), gen=float(e.generation_kwh[0]),
-                    used=float(e.used_kwh[0]), curtail=float(e.curtail_kwh[0]),
-                    savings=float(e.savings_idr[0]), fin=fin,
+                    kwp=k, battery_kwh=b, sc=used / gen if gen > 0 else 1.0, gen=gen,
+                    used=used, curtail=max(gen - used, 0.0),
+                    savings=sav, fin=fin,
                 ))
         battery_note = (
             "Baterai dicoba pada kapasitas " + ", ".join(f"{b:g}" for b in options) + " kWh "

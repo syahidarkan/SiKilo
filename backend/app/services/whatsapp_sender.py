@@ -8,11 +8,16 @@ Penyedia dipilih lewat ``settings.whatsapp_provider``:
   header ``Authorization: <token>``).
 - ``meta``   → WhatsApp Cloud API
   ``POST https://graph.facebook.com/<versi>/<phone_number_id>/messages``
-  (pesan teks). CATATAN: Meta hanya mengizinkan pesan teks bebas di dalam
-  jendela 24 jam sejak pelanggan terakhir mengirim pesan. Pesan inisiatif
-  bisnis di luar jendela itu WAJIB memakai *message template* yang sudah
-  disetujui; bila tidak, API menolak (mis. kode galat 131047). Lihat
-  ``docs/WHATSAPP.md``.
+  CATATAN: Meta hanya mengizinkan pesan teks bebas di dalam jendela 24 jam
+  sejak pelanggan terakhir mengirim pesan. Pesan inisiatif bisnis di luar
+  jendela itu WAJIB memakai *message template* yang sudah disetujui; bila
+  tidak, API menolak (mis. kode galat 131047). Pesan terjadwal
+  (``scheduled=True``: brief harian, nota mingguan) dikirim sebagai template
+  ``settings.whatsapp_meta_template_name`` (bahasa
+  ``whatsapp_meta_template_lang``) dengan SATU parameter body berisi ringkasan
+  pesan (baris baru diganti " | ", maks. 1024 karakter — aturan parameter
+  template Meta). Bila nama template kosong, dikirim sebagai teks biasa
+  (hanya berhasil di dalam jendela 24 jam). Lihat ``docs/WHATSAPP.md``.
 
 ``send_whatsapp`` tidak pernah melempar exception ke pemanggil; semua galat
 dikembalikan sebagai ``SendResult(status="failed", error=...)``.
@@ -34,6 +39,17 @@ FONNTE_URL = "https://api.fonnte.com/send"
 META_URL_TEMPLATE = "https://graph.facebook.com/{version}/{phone_number_id}/messages"
 META_REENGAGEMENT_CODES = {131047}
 MAX_BODY_CHARS = 4096  # batas teks WhatsApp
+MAX_TEMPLATE_PARAM_CHARS = 1024  # batas parameter template Meta
+
+
+def template_param(body: str, limit: int = MAX_TEMPLATE_PARAM_CHARS) -> str:
+    """
+    Ubah isi pesan menjadi parameter template Meta: tanpa baris baru/tab dan
+    tanpa > 4 spasi berturut-turut (ditolak Meta), dipotong ke ``limit``.
+    """
+    lines = [" ".join(line.split()) for line in str(body).splitlines()]
+    text = " | ".join(line for line in lines if line)
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 @dataclass
@@ -105,7 +121,7 @@ async def _send_fonnte(client: httpx.AsyncClient, phone: str, body: str) -> Send
     )
 
 
-async def _send_meta(client: httpx.AsyncClient, phone: str, body: str) -> SendResult:
+async def _send_meta(client: httpx.AsyncClient, phone: str, body: str, scheduled: bool = False) -> SendResult:
     token = settings.whatsapp_api_token.strip()
     phone_number_id = settings.whatsapp_phone_number_id.strip()
     if not token or not phone_number_id:
@@ -113,13 +129,29 @@ async def _send_meta(client: httpx.AsyncClient, phone: str, body: str) -> SendRe
             "failed", "meta", "WHATSAPP_API_TOKEN dan WHATSAPP_PHONE_NUMBER_ID wajib diisi untuk Meta", phone=phone
         )
     url = META_URL_TEMPLATE.format(version=settings.whatsapp_meta_api_version, phone_number_id=phone_number_id)
-    payload = {
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": phone,
-        "type": "text",
-        "text": {"preview_url": False, "body": body},
-    }
+    template = settings.whatsapp_meta_template_name.strip()
+    if scheduled and template:
+        payload: dict[str, Any] = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": phone,
+            "type": "template",
+            "template": {
+                "name": template,
+                "language": {"code": settings.whatsapp_meta_template_lang or "id"},
+                "components": [
+                    {"type": "body", "parameters": [{"type": "text", "text": template_param(body)}]}
+                ],
+            },
+        }
+    else:
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": phone,
+            "type": "text",
+            "text": {"preview_url": False, "body": body},
+        }
     resp = await client.post(url, headers={"Authorization": f"Bearer {token}"}, json=payload)
     data = _json(resp)
     if 200 <= resp.status_code < 300 and isinstance(data, dict) and data.get("messages"):
@@ -130,7 +162,10 @@ async def _send_meta(client: httpx.AsyncClient, phone: str, body: str) -> SendRe
     msg = err.get("message") if isinstance(err, dict) else None
     text = f"Meta menolak (kode {code}): {msg or resp.text or resp.status_code}"
     if code in META_REENGAGEMENT_CODES:
-        text += " — di luar jendela 24 jam; pesan inisiatif bisnis wajib memakai template yang disetujui."
+        text += (
+            " — di luar jendela 24 jam; pesan inisiatif bisnis wajib memakai template yang disetujui "
+            "(isi WHATSAPP_META_TEMPLATE_NAME)."
+        )
     return SendResult("failed", "meta", _short(text), http_status=resp.status_code, phone=phone)
 
 
@@ -141,9 +176,13 @@ async def send_whatsapp(
     provider: Optional[str] = None,
     transport: Optional[httpx.AsyncBaseTransport] = None,
     timeout_s: Optional[float] = None,
+    scheduled: bool = False,
 ) -> SendResult:
     """
     Kirim ``body`` ke ``phone`` lewat penyedia yang dikonfigurasi.
+
+    ``scheduled=True`` menandai pesan inisiatif bisnis (brief/nota): untuk Meta
+    dikirim sebagai template bila ``whatsapp_meta_template_name`` diisi.
 
     ``provider`` menimpa ``settings.whatsapp_provider`` (untuk tes);
     ``transport`` memungkinkan ``httpx.MockTransport`` di tes (tanpa jaringan).
@@ -168,7 +207,7 @@ async def send_whatsapp(
             if prov == "fonnte":
                 result = await _send_fonnte(client, target, text)
             else:
-                result = await _send_meta(client, target, text)
+                result = await _send_meta(client, target, text, scheduled=scheduled)
     except httpx.TimeoutException:
         result = SendResult("failed", prov, "Waktu habis menghubungi penyedia WhatsApp", phone=target)
     except httpx.HTTPError as exc:
@@ -187,4 +226,4 @@ def _mask(phone: Optional[str]) -> str:
     return phone[:4] + "*" * max(0, len(phone) - 7) + phone[-3:]
 
 
-__all__ = ["SendResult", "normalize_phone", "send_whatsapp"]
+__all__ = ["SendResult", "normalize_phone", "send_whatsapp", "template_param"]

@@ -47,6 +47,11 @@ class MachineProfile(Base):
     habit_start_hour: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     is_flexible: Mapped[bool] = mapped_column(Boolean, default=True)
     min_continuous_minutes: Mapped[int] = mapped_column(Integer, default=15)
+    # Kebiasaan lama: menit mesin dibiarkan menyala tanpa beban (idle) per hari,
+    # daya idle (kosong = default_idle_power_frac × power_w), dan jeda minimum.
+    idle_minutes_habit: Mapped[int] = mapped_column(Integer, default=0)
+    idle_power_w: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    cooldown_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class DailyPlan(Base):
