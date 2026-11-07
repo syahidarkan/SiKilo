@@ -3,22 +3,23 @@
    Panel hanya untuk objek, prosa langsung di atas kertas, struktur dari tipografi,
    garis tipis, dan satu kalimat kunci bergaris aksen.
    ═════════════════════════════════════════════════════════════════════════════ */
-/* Resep gradasi latar yang dipakai semua pita: pendar mint di satu sisi, pendar kuning di sisi lain.
-   Pendar selalu memudar sebelum menyentuh tepi atas dan bawah, jadi sambungan antar pita mulus.
-   --band-glow-alt adalah cerminannya agar pita bersebelahan tidak terasa berulang. */
+/* Resep gradasi latar semua pita: hanya dua pendar bulat kecil dan tipis (mint dan kuning),
+   di sisi kiri dan kanan, seperti situs EJA. Pendar tidak pernah mendekati tepi atas dan bawah,
+   jadi sambungan antar pita mulus. --band-glow-alt menukar sisinya agar pita bersebelahan bergantian. */
 :root {
-  --glow-mint: color-mix(in srgb, var(--eco-primary) 22%, transparent);
-  --glow-amber: color-mix(in srgb, var(--solar-primary) 24%, transparent);
+  --glow-r: clamp(190px, 24vw, 330px);
+  --glow-mint: color-mix(in srgb, var(--eco-primary) 13%, transparent);
+  --glow-amber: color-mix(in srgb, var(--solar-primary) 15%, transparent);
   --band-glow:
-    radial-gradient(46% 38% at 10% 40%, var(--glow-mint), transparent 100%),
-    radial-gradient(42% 34% at 92% 64%, var(--glow-amber), transparent 100%);
+    radial-gradient(circle var(--glow-r) at 22% 50%, var(--glow-mint), transparent),
+    radial-gradient(circle var(--glow-r) at 78% 50%, var(--glow-amber), transparent);
   --band-glow-alt:
-    radial-gradient(46% 38% at 90% 40%, var(--glow-mint), transparent 100%),
-    radial-gradient(42% 34% at 8% 64%, var(--glow-amber), transparent 100%);
+    radial-gradient(circle var(--glow-r) at 78% 50%, var(--glow-mint), transparent),
+    radial-gradient(circle var(--glow-r) at 22% 50%, var(--glow-amber), transparent);
 }
 :root[data-theme='dark'] {
-  --glow-mint: color-mix(in srgb, var(--eco-primary) 12%, transparent);
-  --glow-amber: color-mix(in srgb, var(--solar-primary) 11%, transparent);
+  --glow-mint: color-mix(in srgb, var(--eco-primary) 8%, transparent);
+  --glow-amber: color-mix(in srgb, var(--solar-primary) 8%, transparent);
 }
 .sheet {
   position: relative;
@@ -183,9 +184,9 @@
     var(--band-glow-alt),
     linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-paper) 50%, var(--bg-surface) 100%);
 }
-.close::before, .close::after { content: ''; position: absolute; z-index: -1; border-radius: 50%; filter: blur(70px); pointer-events: none; }
-.close::before { width: clamp(260px, 38vw, 520px); aspect-ratio: 1; left: -8%; top: 22%; background: color-mix(in srgb, var(--eco-primary) 30%, transparent); animation: close-drift 14s ease-in-out infinite alternate; }
-.close::after { width: clamp(220px, 32vw, 440px); aspect-ratio: 1; right: -6%; bottom: 6%; background: color-mix(in srgb, var(--solar-primary) 30%, transparent); animation: close-drift 17s ease-in-out infinite alternate-reverse; }
+.close::before, .close::after { content: ''; position: absolute; z-index: -1; border-radius: 50%; filter: blur(90px); pointer-events: none; }
+.close::before { width: clamp(200px, 26vw, 360px); aspect-ratio: 1; left: 12%; top: 30%; background: color-mix(in srgb, var(--eco-primary) 14%, transparent); animation: close-drift 14s ease-in-out infinite alternate; }
+.close::after { width: clamp(180px, 24vw, 320px); aspect-ratio: 1; right: 14%; bottom: 24%; background: color-mix(in srgb, var(--solar-primary) 14%, transparent); animation: close-drift 17s ease-in-out infinite alternate-reverse; }
 @keyframes close-drift { to { transform: translate3d(7%, 9%, 0) scale(1.15); } }
 .close-dots { position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.55;
   background-image: radial-gradient(color-mix(in srgb, var(--metal-dark) 16%, transparent) 1.2px, transparent 1.4px); background-size: 26px 26px;
@@ -401,8 +402,8 @@
   position: relative; isolation: isolate; overflow: hidden; text-align: center; color: #fff;
   padding-block: clamp(72px, 10vw, 140px);
   background:
-    radial-gradient(46% 38% at 10% 40%, rgba(47, 191, 113, 0.36), transparent 100%),
-    radial-gradient(42% 34% at 92% 64%, rgba(255, 158, 44, 0.26), transparent 100%),
+    radial-gradient(circle var(--glow-r) at 22% 50%, rgba(47, 191, 113, 0.2), transparent),
+    radial-gradient(circle var(--glow-r) at 78% 50%, rgba(255, 158, 44, 0.14), transparent),
     linear-gradient(180deg, #0b2a1b 0%, #0f3a26 50%, #0b2a1b 100%);
 }
 .ps-title { margin: 0 auto; max-width: 20ch; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; text-wrap: balance; font-size: clamp(2rem, 5.2vw, 3.9rem); color: #fff; }
