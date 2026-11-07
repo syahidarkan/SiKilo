@@ -1,0 +1,47 @@
+/* ============================================================
+   NOTA LISTRIK — Design System Tokens
+   Hackathon UNS Innovation 2026 · Energy Track Sub-tema C
+   ============================================================ */
+
+:root {
+  /* ── Paper Base (Kertas Nota) ──────────────────────────── */
+  --bg-paper: #FBF9F4;
+  --bg-surface: #F4EFE6;
+  --bg-surface-hover: #EFE8DD;
+  --border-soft: #E8E2D5;
+  --border-medium: #D5CEBF;
+
+  /* ── Solar Amber (Surya & Energi Aktif) ────────────────── */
+  --solar-primary: #FF9E2C;
+  --solar-hover: #F58B13;
+  --solar-light: #FFE6C7;
+  --solar-dark: #D97706;
+
+  /* ── Efficiency Mint (Efisiensi Terverifikasi) ─────────── */
+  --eco-primary: #2FBF71;
+  --eco-hover: #26A862;
+  --eco-light: #D2F5E1;
+  --eco-dark: #1E8E4F;
+
+  /* ── Industrial Metals (Mesin & Teks) ──────────────────── */
+  --metal-dark: #1F2937;
+  --metal-mid: #4B5563;
+  --metal-light: #9CA3AF;
+  --grid-alert: #EF4444;
+  --grid-alert-bg: #FEE2E2;
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Space Mono', monospace;
+
+  /* ── Border Radius ──────────────────────────────────────── */
+  --radius-card: 24px;
+  --radius-inner: 16px;
+  --radius-full: 9999px;
+
+  /* ── Shadows (Soft Clay Style) ──────────────────────────── */
+  --shadow-clay: 0 10px 30px -10px rgba(75, 85, 99, 0.08);
+  --shadow-hover: 0 16px 36px -8px rgba(255, 158, 44, 0.22);
+  --shadow-card: 0 4px 20px -4px rgba(31, 41, 55, 0.05);
+}

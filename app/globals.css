@@ -1,26 +1,71 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ── Tailwind v4 Theme Extension ───────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Colors */
+  --color-bg-paper: var(--bg-paper);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-hover: var(--bg-surface-hover);
+  --color-border-soft: var(--border-soft);
+  --color-border-medium: var(--border-medium);
+
+  --color-solar-primary: var(--solar-primary);
+  --color-solar-hover: var(--solar-hover);
+  --color-solar-light: var(--solar-light);
+  --color-solar-dark: var(--solar-dark);
+
+  --color-eco-primary: var(--eco-primary);
+  --color-eco-hover: var(--eco-hover);
+  --color-eco-light: var(--eco-light);
+  --color-eco-dark: var(--eco-dark);
+
+  --color-metal-dark: var(--metal-dark);
+  --color-metal-mid: var(--metal-mid);
+  --color-metal-light: var(--metal-light);
+  --color-grid-alert: var(--grid-alert);
+  --color-grid-alert-bg: var(--grid-alert-bg);
+
+  /* Typography */
+  --font-sans: var(--font-plus-jakarta), sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  /* Radius */
+  --radius-card: var(--radius-card);
+  --radius-inner: var(--radius-inner);
+
+  /* Shadows */
+  --shadow-clay: var(--shadow-clay);
+  --shadow-hover: var(--shadow-hover);
+  --shadow-card: var(--shadow-card);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base Styles ────────────────────────────────────────────── */
+html {
+  font-family: var(--font-plus-jakarta), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-paper);
+  color: var(--metal-dark);
+}
+
+/* ── Typography Utilities ───────────────────────────────────── */
+.heading {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.metric {
+  font-family: var(--font-mono);
 }
