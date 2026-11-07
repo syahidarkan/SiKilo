@@ -360,23 +360,26 @@ function buildShell(
   g.add(box(0.20, 4.4, 0.20, colM, cx - 3.0, 2.2, 2.37));
   g.add(box(0.20, 4.4, 0.20, colM, cx + 3.0, 2.2, 2.37));
 
-  // Front beam — ghost-transparent so camera can see shop interior
-  const frontBeamM = new THREE.MeshStandardMaterial({ color: 0xBBB8B2, roughness: 0.7, transparent: true, opacity: 0.28, depthWrite: false });
+  // Front beam (lintel above the open storefront)
+  const frontBeamM = mat(0xBBB8B2, 0.7, 0.0);
   g.add(box(6.5, 0.22, 0.22, frontBeamM, cx, 4.31, 2.37));
 
-  // Ceiling — ghost-transparent so isometric camera sees inside
-  const ceilM = new THREE.MeshStandardMaterial({ color: 0xEEEAE0, roughness: 0.9, transparent: true, opacity: 0.12, depthWrite: false });
+  // Ceiling — solid; the storefront has no front wall, so the open
+  // front below roof height already reveals the interior from the
+  // isometric camera. Making this translucent instead painted a
+  // colored veil across the whole shop front.
+  const ceilM = mat(0xEEEAE0, 0.9, 0.0);
   g.add(box(6.5, 0.14, 4.5, ceilM, cx, 4.37, 0.14));
 
-  // Roof overhang — ghost
-  const ovhM = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.8, transparent: true, opacity: 0.20, depthWrite: false });
+  // Roof overhang
+  const ovhM = mat(roofColor, 0.8, 0.0);
   g.add(box(7.0, 0.20, 1.6, ovhM, cx, 4.47, 2.6));
   g.add(box(7.0, 0.20, 0.5, ovhM, cx, 4.75, 1.8));
 
-  // Roof top flat — ghost
-  const rfTopM = new THREE.MeshStandardMaterial({ color: 0xCCC8C0, roughness: 0.9, transparent: true, opacity: 0.18, depthWrite: false });
+  // Roof top flat
+  const rfTopM = mat(0xCCC8C0, 0.9, 0.0);
   g.add(box(6.8, 0.22, 4.9, rfTopM, cx, 4.59, -0.1));
-  g.add(box(6.8, 0.22, 0.4, new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.7, transparent: true, opacity: 0.18, depthWrite: false }), cx, 4.70, 2.4));
+  g.add(box(6.8, 0.22, 0.4, mat(roofColor, 0.7, 0.0), cx, 4.70, 2.4));
 
   // Porch floor
   g.add(box(6.5, 0.14, 1.0, tileM, cx, 0.07, 2.9));

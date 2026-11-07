@@ -117,7 +117,7 @@ const STORY_BEATS: Beat[] = [
 ];
 
 const CARD_RANGES: [number, number][] = [
-  [0.00, 0.17],
+  [-0.04, 0.17],
   [0.15, 0.42],
   [0.40, 0.67],
   [0.65, 0.90],
