@@ -20,7 +20,7 @@ const CHAPTERS = [
   { a: 0.3, b: 0.5, kick: '02 · Kenali mesin', title: 'Kini jelas mesin mana yang paling boros', body: 'Dengan NILM, setiap mesin dikenali dari pola arusnya. Pada pagi hari, pengering dan setrika uap menyala bersamaan, dan seluruh bebannya ditanggung PLN.' },
   { a: 0.54, b: 0.66, kick: '03 · Manfaatkan matahari', title: 'Matahari naik, panel surya mulai bekerja', body: 'Listrik dari panel hanya menghemat jika langsung terpakai. Sejak terbitnya Permen ESDM Nomor 2 Tahun 2024, kelebihan listrik tidak lagi memotong tagihan. Karena itu, waktu pemakaian menjadi kunci.' },
   { a: 0.69, b: 0.86, kick: '04 · Atur jadwal', title: 'Mesin berat digeser ke jam matahari', body: 'Agen penjadwal memindahkan beban yang bisa ditunda ke siang hari. Mesin cuci bekerja bergantian, lalu pengering dan setrika uap menyusul saat panel menghasilkan listrik paling banyak.' },
-  { a: 0.9, b: 1.01, kick: '05 · Hasilnya', title: 'Meteran hijau, tagihan lebih ringan', body: 'Pada siang hari, sebagian besar kebutuhan listrik dilayani panel sendiri. Angka di layar ini hanya ilustrasi. Hitung perkiraan untuk usaha Anda di simulator.', cta: true },
+  { a: 0.9, b: 1.01, kick: '05 · Hasilnya', title: 'Meteran hijau, tagihan lebih ringan', body: 'Pada siang hari, sebagian besar kebutuhan listrik dilayani panel sendiri. Semua ini hanya ilustrasi. Hitung perkiraan untuk usaha Anda di simulator.', cta: true },
 ];
 
 const CAM_KEYS = [
@@ -641,7 +641,6 @@ export default function StoryScene() {
     const clouds = qa('.st-cloud');
     const tags = qa('.st-tag');
     const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim'), fade = q('.st-fade');
-    const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]'), stamp = q('.st-stamp');
     const cA = new THREE.Color(), cB = new THREE.Color(), cT = new THREE.Color(), cI = new THREE.Color();
     const inkDark = new THREE.Color(0x14281a), inkLight = new THREE.Color(0xf1f7f2), mutDark = new THREE.Color(0x3f5a46), mutLight = new THREE.Color(0xc4d4ca);
     const fmt = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
@@ -735,7 +734,6 @@ export default function StoryScene() {
       const panelOn = smooth(0.55, 0.72, p);
       const pv = PV_KWP * Math.max(0, e) * 0.92 * panelOn;
       const grid = Math.max(0, load - pv);
-      const selfShare = load > 0 ? Math.min(pv, load) / load : 0;
       const nilm = smooth(0.27, 0.34, p) * (1 - smooth(0.5, 0.55, p));
 
       machines.forEach((m, i) => {
@@ -819,14 +817,6 @@ export default function StoryScene() {
 
       fade.style.opacity = smooth(0.93, 1, p).toFixed(3);
 
-      const hh2 = Math.floor(hr), mm = Math.floor((hr - hh2) * 60);
-      rHour.textContent = String(hh2).padStart(2, '0') + '.' + String(mm).padStart(2, '0');
-      rLoad.textContent = fmt(load) + ' kW';
-      rPv.textContent = fmt(pv) + ' kW';
-      rGrid.textContent = fmt(grid) + ' kW';
-      rSelf.textContent = Math.round(selfShare * 100) + '%';
-      rBar.style.width = Math.round(selfShare * 100) + '%';
-      stamp.classList.toggle('on', selfShare > 0.85 && pv > 0.3);
 
       renderer.render(scene, camera);
     }
@@ -878,15 +868,6 @@ export default function StoryScene() {
           </div>
         ))}
 
-        <div className="st-nota" role="group" aria-label="Contoh pembacaan listrik, ilustrasi">
-          <div className="st-nota-head"><b>Nota listrik</b><span data-r="hour">05.18</span></div>
-          <div className="st-row"><span>Beban toko</span><i /><b data-r="load">0,3 kW</b></div>
-          <div className="st-row pln"><span>Dari PLN</span><i /><b data-r="grid">0,3 kW</b></div>
-          <div className="st-row sur"><span>Dari surya</span><i /><b data-r="pv">0,0 kW</b></div>
-          <div className="st-total"><span>Porsi surya</span><b data-r="self">0%</b></div>
-          <div className="st-split"><i data-r="bar" /></div>
-          <div className="st-nota-foot"><span>Contoh, bukan<br />data lapangan</span><span className="st-stamp" aria-hidden="true">Hemat<br />surya</span></div>
-        </div>
         <div className="st-hint">Gulir ↓</div>
       </div>
     </div>
