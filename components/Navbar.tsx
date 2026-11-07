@@ -5,8 +5,7 @@ import { LogIn, Menu, X, Zap } from 'lucide-react';
 import { DASHBOARD_URL } from '@/lib/waskita';
 
 const NAV_LINKS = [
-  { label: 'Cerita', id: 'scroll-track' },
-  { label: 'Sehari', id: 'sehari' },
+  { label: 'Cerita', id: 'sehari' },
   { label: 'Simulator', id: 'simulator-section' },
   { label: 'Fitur', id: 'fitur' },
   { label: 'FAQ', id: 'faq' },
@@ -15,7 +14,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [active, setActive] = useState<string>('scroll-track');
+  const [active, setActive] = useState<string>('sehari');
   const headerRef = useRef<HTMLElement>(null);
 
   // Scrolled state + page progress, in one rAF-throttled listener.
@@ -70,7 +69,7 @@ export default function Navbar() {
   return (
     <header ref={headerRef} className={`nav ${scrolled || menuOpen ? 'nav-solid' : ''}`}>
       <nav className="nav-bar" aria-label="Navigasi utama">
-        <a href="#scroll-track" className="nav-logo" onClick={() => setMenuOpen(false)}>
+        <a href="#top" className="nav-logo" onClick={() => setMenuOpen(false)}>
           <span className="nav-mark">
             <Zap size={17} strokeWidth={2.6} fill="currentColor" />
           </span>
