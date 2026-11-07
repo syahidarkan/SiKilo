@@ -7,8 +7,8 @@ import { useGaze, useReducedMotion } from '@/components/hooks';
 
 const FAQS = [
   {
-    q: 'Apa itu NOTA LISTRIK dan kenapa saya butuh ini?',
-    a: 'NOTA LISTRIK adalah AI Energy Dispatcher yang membantu usahamu membaca tagihan listrik seperti akuntan, mengelola jadwal mesin seperti manajer, dan menyiapkan rapor kelayakan PLTS untuk bank. Kalau tagihan listrikmu lebih dari Rp500.000/bulan, kamu butuh ini.',
+    q: 'Apa itu WASKITA dan kenapa saya butuh ini?',
+    a: 'WASKITA adalah AI Energy Dispatcher yang membantu usahamu membaca tagihan listrik seperti akuntan, mengelola jadwal mesin seperti manajer, dan menyiapkan rapor kelayakan PLTS untuk bank. Kalau tagihan listrikmu lebih dari Rp500.000/bulan, kamu butuh ini.',
   },
   {
     q: 'Bagaimana Si Kilo mendeteksi mesin yang boros?',
@@ -20,7 +20,7 @@ const FAQS = [
   },
   {
     q: 'Apakah datanya bisa dipakai untuk pengajuan pinjaman bank?',
-    a: 'Ya! Energy Credit Scorecard dari NOTA LISTRIK sudah diformat sesuai standar penilaian kelayakan green financing. Data konsumsi terukur, proyeksi penghematan, dan PBP tersaji dalam laporan yang siap dilampirkan ke Bank BRI, BNI, atau lembaga pembiayaan UMKM lainnya.',
+    a: 'Ya! Energy Credit Scorecard dari WASKITA sudah diformat sesuai standar penilaian kelayakan green financing. Data konsumsi terukur, proyeksi penghematan, dan PBP tersaji dalam laporan yang siap dilampirkan ke Bank BRI, BNI, atau lembaga pembiayaan UMKM lainnya.',
   },
 ];
 

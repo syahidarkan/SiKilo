@@ -65,7 +65,7 @@ export default function CtaFooter() {
                 <ArrowRight size={16} className="cta-arrow" />
               </a>
               <a
-                href="mailto:syhd.acan@gmail.com?subject=NOTA LISTRIK - Daftar Early Access"
+                href="mailto:syhd.acan@gmail.com?subject=WASKITA - Daftar Early Access"
                 className="cta-btn cta-btn-ghost"
               >
                 <Mail size={16} />
@@ -92,7 +92,7 @@ export default function CtaFooter() {
                   <Zap size={14} fill="currentColor" />
                 </div>
                 <span className="font-black text-sm tracking-tight" style={{ color: '#fff' }}>
-                  NOTA<span style={{ color: 'var(--eco-primary)' }}>LISTRIK</span>
+                  WAS<span style={{ color: 'var(--eco-primary)' }}>KITA</span>
                 </span>
               </div>
               <p className="text-xs leading-relaxed" style={{ color: '#6FA687' }}>
@@ -133,7 +133,7 @@ export default function CtaFooter() {
             className="pt-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs"
             style={{ borderTop: '1px solid #1D3A2E', color: '#6FA687' }}
           >
-            <span>© 2026 NOTA LISTRIK · UNS Innovation Hackathon · Energy Track Sub-tema C</span>
+            <span>© 2026 WASKITA · UNS Innovation Hackathon · Energy Track Sub-tema C</span>
             <a href="#top" className="cta-top">
               Kembali ke atas <ArrowUp size={13} />
             </a>

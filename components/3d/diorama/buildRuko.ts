@@ -1,5 +1,5 @@
 /**
- * buildRuko - Procedural diorama geometry for the NOTA LISTRIK hero scene.
+ * buildRuko - Procedural diorama geometry for the WASKITA hero scene.
  * Ruko (shophouse) cutaway: open on +X and +Z faces so the camera at
  * (18,16,18) can see into both floors and the rooftop.
  * No external model files - pure Three.js primitives.

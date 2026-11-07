@@ -217,7 +217,7 @@ export default function MascotTestPage() {
             className="kicker block mb-1"
             style={{ color: 'var(--eco-primary)' }}
           >
-            Nota Listrik · UNS Hackathon 2026
+            WASKITA · UNS Hackathon 2026
           </span>
           <h1
             className="heading text-2xl"

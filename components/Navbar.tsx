@@ -73,9 +73,7 @@ export default function Navbar() {
             <Zap size={17} strokeWidth={2.6} fill="currentColor" />
           </span>
           <span className="nav-word">
-            NOTA
-            <br />
-            <span>LISTRIK</span>
+            WAS<span>KITA</span>
           </span>
         </a>
 

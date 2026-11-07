@@ -1,6 +1,6 @@
 /**
  * buildStreet - Road, sidewalk, utility pole, vehicles, trees
- * for the NOTA LISTRIK 3-shop street diorama.
+ * for the WASKITA 3-shop street diorama.
  */
 import * as THREE from 'three';
 
