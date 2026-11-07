@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ArrowRight, ArrowUp, Mail, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUp, UserPlus, Zap } from 'lucide-react';
+import { REGISTER_URL } from '@/lib/waskita';
 import Reveal from '@/components/Reveal';
 import KiloAvatar from '@/components/KiloAvatar';
 import { useGaze, useOnceInView, useReducedMotion } from '@/components/hooks';
@@ -64,12 +65,9 @@ export default function CtaFooter() {
                 Coba Simulator Gratis
                 <ArrowRight size={16} className="cta-arrow" />
               </a>
-              <a
-                href="mailto:syhd.acan@gmail.com?subject=WASKITA - Daftar Early Access"
-                className="cta-btn cta-btn-ghost"
-              >
-                <Mail size={16} />
-                Daftar Early Access
+              <a href={REGISTER_URL} className="cta-btn cta-btn-ghost">
+                <UserPlus size={16} />
+                Daftar & Buka Dasbor
               </a>
             </div>
 

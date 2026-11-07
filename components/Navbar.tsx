@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Menu, X, Zap } from 'lucide-react';
+import { LogIn, Menu, X, Zap } from 'lucide-react';
+import { DASHBOARD_URL } from '@/lib/waskita';
 
 const NAV_LINKS = [
   { label: 'Cerita', id: 'scroll-track' },
@@ -91,6 +92,9 @@ export default function Navbar() {
         </div>
 
         <div className="nav-right">
+          <a href={DASHBOARD_URL} className="nav-link inline-flex items-center gap-1.5" title="Masuk ke dasbor WASKITA">
+            <LogIn size={15} /> Masuk
+          </a>
           <a href="#simulator-section" className="nav-cta">
             Coba Simulator
           </a>
@@ -127,6 +131,14 @@ export default function Navbar() {
             onClick={() => setMenuOpen(false)}
           >
             Coba Simulator
+          </a>
+          <a
+            href={DASHBOARD_URL}
+            className="nav-sheet-link"
+            tabIndex={menuOpen ? 0 : -1}
+            onClick={() => setMenuOpen(false)}
+          >
+            Masuk Dasbor
           </a>
         </div>
       </div>

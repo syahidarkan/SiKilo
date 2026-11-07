@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Sun, Zap, ClipboardList, Check } from 'lucide-react';
+import { Sun, Zap, ClipboardList, Check, Loader2 } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import KiloAvatar from '@/components/KiloAvatar';
 import { useCountUp, useGaze, useReducedMotion } from '@/components/hooks';
+import { fetchEstimate, type Estimate, type MachineKey } from '@/lib/waskita';
 
 const EXAMPLES = [
   'Bengkel Konveksi 5.500 VA dengan 2 mesin potong uap dan setrika uap',
@@ -16,11 +17,11 @@ const EXAMPLES = [
 const POWER_TAGS = ['2.200 VA', '3.500 VA', '5.500 VA', '11.000 VA'] as const;
 const VA: Record<string, number> = { '2.200 VA': 2200, '3.500 VA': 3500, '5.500 VA': 5500, '11.000 VA': 11000 };
 
-const MACHINES: { tag: string; keys: RegExp }[] = [
-  { tag: 'Setrika Uap', keys: /setrika|uap|boiler/i },
-  { tag: 'Kompresor Angin', keys: /kompresor/i },
-  { tag: 'Oven Pemanas', keys: /oven|pemanas/i },
-  { tag: 'Mesin Cuci Dryer', keys: /mesin cuci|dryer|laundry/i },
+const MACHINES: { tag: string; key: MachineKey; keys: RegExp }[] = [
+  { tag: 'Setrika Uap', key: 'setrika_uap', keys: /setrika|uap|boiler/i },
+  { tag: 'Kompresor Angin', key: 'kompresor_angin', keys: /kompresor/i },
+  { tag: 'Oven Pemanas', key: 'oven_pemanas', keys: /oven|pemanas/i },
+  { tag: 'Mesin Cuci Dryer', key: 'mesin_cuci_dryer', keys: /mesin cuci|dryer|laundry/i },
 ];
 
 /** Reads a plan size and machines out of free text, so the story the owner types actually drives the result. */
@@ -33,18 +34,27 @@ function parseProfile(text: string) {
   return { power, machines: MACHINES.filter((x) => x.keys.test(text)).map((x) => x.tag) };
 }
 
-// Placeholder assumptions, to be replaced with real tariff and quotation data.
-const CAPEX_PER_KWP = 15_000_000; // rooftop PV installed cost, Rp per kWp
-const SAVING_PER_KWP = 445_000; // Rp saved per month per kWp
-const SHIFT_GAIN = 0.06; // extra daytime self-consumption per flexible machine the dispatcher can shift
+// Estimasi kasar CADANGAN, hanya dipakai saat backend WASKITA tidak bisa dihubungi.
+// Angka utama datang dari tiruan digital backend (POST /api/v1/public/estimate).
+const CAPEX_PER_KWP = 10_500_000; // biaya PLTS atap terpasang, Rp per kWp (selaras config backend)
+const SAVING_PER_KWP = 445_000; // Rp hemat per bulan per kWp (kasar, tanpa jadwal agen)
 
-function calc(power: string, machines: number) {
+function calcOffline(power: string, machines: number) {
   const va = VA[power] ?? 3500;
-  const kwp = (va / 1000) * 0.65 * (1 + machines * 0.3) * 0.55;
-  const hemat = Math.round(kwp * SAVING_PER_KWP * (1 + machines * SHIFT_GAIN));
+  const kwp = Math.min(va / 1000, (va / 1000) * 0.65 * (1 + machines * 0.3) * 0.55);
+  const hemat = Math.round(kwp * SAVING_PER_KWP);
   const pbp = (kwp * CAPEX_PER_KWP) / (hemat * 12);
   return { kwp, hemat, pbp };
 }
+
+type Result = {
+  kwp: number;
+  hemat: number;
+  pbp: number | null;
+  capex: number;
+  source: 'server' | 'offline';
+  estimate?: Estimate;
+};
 
 function Metric({
   label, sub, badge, icon, accent, bg, value, format, reduced,
@@ -143,7 +153,64 @@ export default function SimulatorSection() {
   const toggleMachine = (m: string) =>
     setMachines((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
 
-  const result = useMemo(() => (power ? calc(power, machines.length) : null), [power, machines.length]);
+  const machineKeys = useMemo(
+    () => MACHINES.filter((m) => machines.includes(m.tag)).map((m) => m.key),
+    [machines],
+  );
+
+  // Hitung lewat tiruan digital WASKITA di backend (debounce); cadangan offline bila gagal.
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    if (!power) {
+      setEstimate(null);
+      setLoading(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    setLoading(true);
+    const t = setTimeout(() => {
+      fetchEstimate(VA[power], machineKeys, ctrl.signal)
+        .then((e) => {
+          setEstimate(e);
+          setOffline(false);
+        })
+        .catch((err) => {
+          if (ctrl.signal.aborted) return;
+          console.warn('Estimasi WASKITA gagal, memakai estimasi kasar:', err);
+          setEstimate(null);
+          setOffline(true);
+        })
+        .finally(() => {
+          if (!ctrl.signal.aborted) setLoading(false);
+        });
+    }, 450);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [power, machineKeys]);
+
+  const result: Result | null = useMemo(() => {
+    if (!power) return null;
+    const keysNow = [...machineKeys].sort().join(',');
+    if (estimate && estimate.connected_power_va === VA[power] && [...estimate.machines].sort().join(',') === keysNow) {
+      return {
+        kwp: estimate.recommended_kwp ?? 0,
+        hemat: estimate.monthly_savings_idr,
+        pbp: estimate.payback_years,
+        capex: estimate.capex_idr,
+        source: 'server',
+        estimate,
+      };
+    }
+    if (offline) {
+      const r = calcOffline(power, machines.length);
+      return { ...r, capex: r.kwp * CAPEX_PER_KWP, source: 'offline' };
+    }
+    return null;
+  }, [power, estimate, offline, machines.length, machineKeys]);
 
   return (
     <section
@@ -291,12 +358,23 @@ export default function SimulatorSection() {
 
         {/* Live result, with Si Kilo narrating */}
         <div aria-live="polite">
-          {result ? (
+          {loading && !result ? (
+            <div className="faq-msg faq-rest" style={{ paddingTop: 4 }}>
+              <KiloAvatar className="faq-avatar" />
+              <p className="inline-flex items-center gap-2">
+                <Loader2 size={14} className="animate-spin" /> Si Kilo sedang menghitung dengan tiruan digital WASKITA...
+              </p>
+            </div>
+          ) : result ? (
             <div style={{ animation: 'sim-pop 0.45s cubic-bezier(0.2,0.9,0.3,1.2) both' }}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <Metric
                   label="Kapasitas PLTS Optimal"
-                  sub="Lebih efisien dengan AI Dispatcher"
+                  sub={
+                    result.estimate?.kwp_without_agent && result.estimate.kwp_reduction_pct
+                      ? `Tanpa jadwal agen: ${result.estimate.kwp_without_agent.toFixed(1)} kWp`
+                      : 'Dihitung setelah jadwal mesin diatur agen'
+                  }
                   icon={<Sun size={16} />}
                   accent="var(--eco-primary)"
                   bg="var(--eco-light)"
@@ -306,7 +384,11 @@ export default function SimulatorSection() {
                 />
                 <Metric
                   label="Estimasi Hemat / Bulan"
-                  sub="Penghematan bulanan terukur"
+                  sub={
+                    result.estimate
+                      ? `${result.estimate.savings_pct.toFixed(0)}% dari tagihan ±Rp${Math.round(result.estimate.monthly_bill_now_idr).toLocaleString('id-ID')}`
+                      : 'Estimasi kasar (offline)'
+                  }
                   icon={<Zap size={16} />}
                   accent="var(--solar-dark)"
                   bg="var(--solar-light)"
@@ -316,21 +398,38 @@ export default function SimulatorSection() {
                 />
                 <Metric
                   label="Waktu Balik Modal"
-                  badge="Layak Pembiayaan Bank"
+                  sub={result.capex > 0 ? `Investasi ±Rp${(result.capex / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 })} juta` : undefined}
+                  badge={
+                    result.estimate?.kwp_reduction_pct
+                      ? `Panel ${result.estimate.kwp_reduction_pct.toFixed(0)}% lebih kecil berkat agen`
+                      : undefined
+                  }
                   icon={<ClipboardList size={16} />}
                   accent="var(--eco-dark)"
                   bg="var(--bg-surface)"
-                  value={result.pbp}
-                  format={(n) => `${n.toFixed(1)} Tahun`}
+                  value={result.pbp ?? 0}
+                  format={(n) => (result.pbp != null ? `${n.toFixed(1)} Tahun` : '-')}
                   reduced={reduced}
                 />
               </div>
               <div className="faq-msg" style={{ paddingTop: 16 }}>
                 <KiloAvatar className="faq-avatar" />
                 <p>
-                  Untuk {power}
-                  {machines.length > 0 ? ` dengan ${machines.length} mesin fleksibel` : ''}, PLTS sekitar {result.kwp.toFixed(1)} kWp
-                  sudah cukup. Ini estimasi kasar untuk gambaran awal, bukan penawaran.
+                  {result.estimate ? (
+                    <>
+                      {result.estimate.headline}{' '}
+                      <span style={{ color: 'var(--metal-mid)' }}>
+                        Dihitung tiruan digital WASKITA (cuaca {result.estimate.pv_source.includes('nasa') ? 'NASA POWER' : 'clear-sky'},
+                        tarif {result.estimate.tariff_group}, ekspor ke PLN tidak dihitung) dari profil mesin tipikal. Ini estimasi, bukan penawaran.
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Untuk {power}
+                      {machines.length > 0 ? ` dengan ${machines.length} mesin fleksibel` : ''}, PLTS sekitar {result.kwp.toFixed(1)} kWp.
+                      Server WASKITA sedang tidak terjangkau, jadi ini estimasi kasar untuk gambaran awal, bukan penawaran.
+                    </>
+                  )}
                 </p>
               </div>
             </div>

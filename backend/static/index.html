@@ -1832,6 +1832,10 @@ $('dispDays').addEventListener('change', loadDisperinaker);
 $('kpiDays').addEventListener('change', loadKpi);
 window.addEventListener('resize', () => { drawWave($('liveCanvas'), S.live.data, '56,189,248'); drawWave($('simCanvas'), S.sim.data, '251,146,60'); });
 buildSimPresets();
+/* Tautan dari landing page: #daftar membuka tab pendaftaran. */
+function openRegisterFromHash() { if ((location.hash || '') === '#daftar' && !S.user) showAuthTab('register'); }
+openRegisterFromHash();
+window.addEventListener('hashchange', openRegisterFromHash);
 
 /* ── Mulai: pulihkan sesi dari token tersimpan, verifikasi ke /auth/me ── */
 (async function boot() {
