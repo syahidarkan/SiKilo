@@ -879,14 +879,13 @@ export default function StoryScene() {
         ))}
 
         <div className="st-nota" role="group" aria-label="Contoh pembacaan listrik, ilustrasi">
-          <span className="st-stamp" aria-hidden="true">Hemat<br />surya</span>
           <div className="st-nota-head"><b>Nota listrik</b><span data-r="hour">05.18</span></div>
           <div className="st-row"><span>Beban toko</span><i /><b data-r="load">0,3 kW</b></div>
           <div className="st-row pln"><span>Dari PLN</span><i /><b data-r="grid">0,3 kW</b></div>
           <div className="st-row sur"><span>Dari surya</span><i /><b data-r="pv">0,0 kW</b></div>
           <div className="st-total"><span>Porsi surya</span><b data-r="self">0%</b></div>
           <div className="st-split"><i data-r="bar" /></div>
-          <div className="st-nota-foot">Contoh, bukan data lapangan</div>
+          <div className="st-nota-foot"><span>Contoh, bukan<br />data lapangan</span><span className="st-stamp" aria-hidden="true">Hemat<br />surya</span></div>
         </div>
         <div className="st-hint">Gulir ↓</div>
       </div>
