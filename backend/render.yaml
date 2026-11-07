@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: sikilo-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./waskita.db
+      - key: ENV
+        value: production
+    healthCheckPath: /health
+    autoDeploy: true
