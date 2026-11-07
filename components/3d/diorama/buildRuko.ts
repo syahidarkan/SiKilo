@@ -1,8 +1,8 @@
 /**
- * buildRuko — Procedural diorama geometry for the NOTA LISTRIK hero scene.
+ * buildRuko - Procedural diorama geometry for the NOTA LISTRIK hero scene.
  * Ruko (shophouse) cutaway: open on +X and +Z faces so the camera at
  * (18,16,18) can see into both floors and the rooftop.
- * No external model files — pure Three.js primitives.
+ * No external model files - pure Three.js primitives.
  */
 
 import * as THREE from 'three';
@@ -59,9 +59,9 @@ export function buildRuko(): DioramaRefs {
   // ── Outer shell ────────────────────────────────────────────────────────────
   // Back wall  (z = −4)
   g.add(mesh(new THREE.BoxGeometry(8.3, 6.5, 0.25), wallMat, 0, 3.25, -4));
-  // Left wall  (x = −4) — visible from camera
+  // Left wall  (x = −4) - visible from camera
   g.add(mesh(new THREE.BoxGeometry(0.25, 6.5, 8.3), wallMat, -4, 3.25, 0));
-  // Right partial low wall (x = +4) — only bottom trim visible at beat 1
+  // Right partial low wall (x = +4) - only bottom trim visible at beat 1
   g.add(mesh(new THREE.BoxGeometry(0.15, 1.0, 8.3), wallMat, 4, 0.5, 0));
 
   // ── Windows on back wall ───────────────────────────────────────────────────

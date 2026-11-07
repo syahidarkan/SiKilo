@@ -135,7 +135,7 @@ export function buildEnv(scene: THREE.Scene): EnvRefs {
   const trotoarM = new THREE.MeshStandardMaterial({ color: 0xD0CCBC, roughness: 0.9 });
   g.add(box(50, 0.24, 2.8, trotoarM, 0, 0.12, 3.6));
 
-  // Paving pattern — thin lines
+  // Paving pattern - thin lines
   const lineM = new THREE.MeshStandardMaterial({ color: 0xB8B4A4, roughness: 1.0 });
   for (let xi = -24; xi <= 24; xi += 2) {
     g.add(box(0.04, 0.26, 2.8, lineM, xi, 0.13, 3.6));

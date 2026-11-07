@@ -99,7 +99,7 @@ const STORY_BEATS: Beat[] = [
     kicker: '03 OPTIMASI KONVEKSI',
     kickerColor: 'var(--eco-primary)',
     heading: 'Cegah trip beban puncak\ndengan jadwal cerdas',
-    subtitle: 'AI mengatur jadwal boiler setrika uap agar tidak bertabrakan dengan motor jahit—memangkas tagihan daya kVA.',
+    subtitle: 'AI mengatur jadwal boiler setrika uap agar tidak bertabrakan dengan motor jahit, memangkas tagihan daya kVA.',
   },
   {
     kicker: '04 SINERGI SURYA LAUNDRY',
@@ -111,7 +111,7 @@ const STORY_BEATS: Beat[] = [
     kicker: '05 HASIL TERUKUR',
     kickerColor: 'var(--solar-primary)',
     heading: 'Kawasan UMKM hemat energi,\nsiap pembiayaan bank',
-    subtitle: 'Rapor energi presisi membuktikan penghematan nyata—dasar kelayakan instalasi PLTS atap tanpa tebak-tebakan.',
+    subtitle: 'Rapor energi presisi membuktikan penghematan nyata, dasar kelayakan instalasi PLTS atap tanpa tebak-tebakan.',
     cta: true,
   },
 ];
@@ -132,10 +132,20 @@ function beatOpacity(sp: number, s: number, e: number, fade = 0.04): number {
   return 1;
 }
 
+function scrollToBeat(i: number): void {
+  const track = document.getElementById('scroll-track');
+  if (!track) return;
+  const [s, e] = CARD_RANGES[i];
+  const mid = Math.max(0.03, Math.min(0.98, (s + e) / 2));
+  const total = track.clientHeight - window.innerHeight;
+  window.scrollTo({ top: track.getBoundingClientRect().top + window.scrollY + mid * total, behavior: 'smooth' });
+}
+
 export default function HeroDioramaScene(): React.ReactElement {
   const mountRef   = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<(HTMLDivElement | null)[]>([]);
   const ctaRef     = useRef<HTMLButtonElement | null>(null);
+  const cueRef     = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -144,10 +154,11 @@ export default function HeroDioramaScene(): React.ReactElement {
 
     // ── Renderer ────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const lite = window.matchMedia('(max-width: 768px)').matches; // phones: lighter render
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.5 : 2));
     renderer.setSize(W, H);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
     renderer.domElement.style.position = 'absolute';
@@ -162,7 +173,7 @@ export default function HeroDioramaScene(): React.ReactElement {
     scene.fog = new THREE.FogExp2(0xFBF9F4, 0.025);
 
     // ── Camera (orthographic) ────────────────────────────────────
-    const aspect = W / H;
+    let aspect = W / H;
     const D_BASE = 11;
     let currentZoom = 0.88;
     let currentLook = new THREE.Vector3(0, 2.0, 2.0);
@@ -172,7 +183,10 @@ export default function HeroDioramaScene(): React.ReactElement {
        D_BASE / currentZoom, -D_BASE / currentZoom,
       0.1, 200,
     );
-    function updateCamera(lookAt: THREE.Vector3, zoom: number): void {
+    // The keyframes were tuned for landscape; on a portrait screen zoom out so the street still fits.
+    const zoomFit = () => Math.min(1, Math.max(0.62, aspect / 1.7));
+    function updateCamera(lookAt: THREE.Vector3, zoomIn: number): void {
+      const zoom = zoomIn * zoomFit();
       camera.left   = -D_BASE * aspect / zoom;
       camera.right  =  D_BASE * aspect / zoom;
       camera.top    =  D_BASE / zoom;
@@ -190,7 +204,7 @@ export default function HeroDioramaScene(): React.ReactElement {
     const sun = new THREE.DirectionalLight(0xFFF5E0, 1.3);
     sun.position.set(12, 20, 12);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(lite ? 1024 : 2048, lite ? 1024 : 2048);
     sun.shadow.camera.near = 0.5;
     sun.shadow.camera.far  = 80;
     sun.shadow.camera.left   = -22;
@@ -277,17 +291,13 @@ export default function HeroDioramaScene(): React.ReactElement {
     const ro = new ResizeObserver(() => {
       const w = canvas.clientWidth, h = canvas.clientHeight;
       renderer.setSize(w, h);
-      const asp = w / h;
-      camera.left   = -D_BASE * asp / currentZoom;
-      camera.right  =  D_BASE * asp / currentZoom;
-      camera.top    =  D_BASE / currentZoom;
-      camera.bottom = -D_BASE / currentZoom;
-      camera.updateProjectionMatrix();
+      aspect = w / h;
+      updateCamera(currentLook, currentZoom);
     });
     ro.observe(canvas);
 
     // ── Animation loop ───────────────────────────────────────────
-    const clock = new THREE.Clock();
+    let   last  = performance.now();
     let   time  = 0;
     let   animId = 0;
     let   prevSubBeat = -1;
@@ -297,7 +307,9 @@ export default function HeroDioramaScene(): React.ReactElement {
 
     function animate(): void {
       animId = requestAnimationFrame(animate);
-      const delta = Math.min(clock.getDelta(), 0.05);
+      const now   = performance.now();
+      const delta = Math.min((now - last) / 1000, 0.05);
+      last = now;
       time += delta;
 
       // Smooth scroll
@@ -325,7 +337,7 @@ export default function HeroDioramaScene(): React.ReactElement {
       }
 
       // ── Mascot scale: constant apparent size regardless of zoom ──
-      const mascotScale = 0.90 / Math.max(currentZoom, 0.5);
+      const mascotScale = 0.90 / Math.max(currentZoom * zoomFit(), 0.3);
       mascot.refs.root.scale.setScalar(mascotScale);
 
       // ── Clamping beats: arm pose, face wall, split cables ────────
@@ -498,20 +510,39 @@ export default function HeroDioramaScene(): React.ReactElement {
       // ── Update mascot ────────────────────────────────────────────
       mascot.update(delta, time);
 
-      // ── Dot nav ───────────────────────────────────────────────────
+      // Scroll cue fades once the story starts
+      if (cueRef.current) cueRef.current.style.opacity = String(1 - smoothstep(sp, 0.0, 0.04));
+
+      // ── Dot nav: the card currently most visible is the active one ──
+      let activeBeat = 0, best = -1;
+      CARD_RANGES.forEach(([s, e], i) => {
+        const op = beatOpacity(sp, s, e, 0.04);
+        if (op > best) { best = op; activeBeat = i; }
+      });
       const dots = document.querySelectorAll<HTMLElement>('[data-beat-dot]');
       dots.forEach((d, i) => {
-        const active = subBeat >= i * 2 && subBeat < (i + 1) * 2;
+        const active = i === activeBeat;
         d.style.background = active ? 'var(--eco-primary)' : 'rgba(255,255,255,0.4)';
         d.style.transform = active ? 'scale(1.3)' : 'scale(1)';
+        if (active) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
       });
 
       renderer.render(scene, camera);
     }
 
-    animate();
+    // Only render while the hero is on screen; the loop stops once it is scrolled past.
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        if (!animId) { last = performance.now(); animate(); }
+      } else {
+        cancelAnimationFrame(animId);
+        animId = 0;
+      }
+    });
+    io.observe(canvas);
 
     return () => {
+      io.disconnect();
       cancelAnimationFrame(animId);
       window.removeEventListener('scroll', onScroll);
       ro.disconnect();
@@ -522,12 +553,12 @@ export default function HeroDioramaScene(): React.ReactElement {
 
   return (
     <div ref={mountRef} className="relative w-full h-full" style={{ overflow: 'hidden' }}>
-      {/* Story card overlays — vertically centred on the left */}
+      {/* Story card overlays - vertically centred on the left */}
       {STORY_BEATS.map((beat, i) => (
         <div
           key={i}
           ref={(el) => { overlayRef.current[i] = el; }}
-          className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 max-w-xs md:max-w-sm pointer-events-none"
+          className="absolute left-4 right-12 bottom-28 md:right-auto md:left-10 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:max-w-sm pointer-events-none"
           style={{ opacity: i === 0 ? 1 : 0, transition: 'opacity 0.3s ease', zIndex: 20 }}
         >
           <div
@@ -578,20 +609,45 @@ export default function HeroDioramaScene(): React.ReactElement {
         </div>
       ))}
 
+      {/* Scroll cue */}
+      <div
+        ref={cueRef}
+        className="absolute left-1/2 bottom-6 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none rounded-2xl px-4 py-2.5"
+        style={{
+          zIndex: 20,
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 24px -8px rgba(0,0,0,0.2)',
+        }}
+        aria-hidden="true"
+      >
+        <span className="text-xs font-bold tracking-widest uppercase whitespace-nowrap" style={{ color: 'var(--metal-dark)' }}>
+          Scroll untuk mulai
+        </span>
+        <span className="scroll-cue-mouse">
+          <i />
+        </span>
+      </div>
+
       {/* Beat dot navigation (right side) */}
       <div
         className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 flex flex-col gap-2.5"
         style={{ zIndex: 20 }}
       >
-        {STORY_BEATS.map((_, i) => (
-          <div
+        {STORY_BEATS.map((beat, i) => (
+          <button
             key={i}
+            type="button"
             data-beat-dot={i}
-            className="rounded-full transition-all"
+            aria-label={`Ke bagian ${beat.kicker}`}
+            title={beat.kicker}
+            onClick={() => scrollToBeat(i)}
+            className="rounded-full cursor-pointer border-0 p-0"
             style={{
-              width: 8, height: 8,
+              width: 10, height: 10,
               background: i === 0 ? 'var(--eco-primary)' : 'rgba(255,255,255,0.4)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
               transition: 'background 0.3s, transform 0.2s',
             }}
           />

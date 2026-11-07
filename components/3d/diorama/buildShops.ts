@@ -151,7 +151,7 @@ function buildMeterBox(cx: number, g: THREE.Group): { mesh: THREE.Mesh; indMesh:
   // Wall bracket
   g.add(box(0.08, 0.80, 0.08, mat(0x888888, 0.7, 0.3), mx - 0.26, my, mz - 0.04));
 
-  // Drop cable stub (from span area to meter) — visible segment near meter
+  // Drop cable stub (from span area to meter) - visible segment near meter
   const stubCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(mx, 4.80, 3.40),
     new THREE.Vector3(mx, 3.60, 3.00),
@@ -364,7 +364,7 @@ function buildShell(
   const frontBeamM = mat(0xBBB8B2, 0.7, 0.0);
   g.add(box(6.5, 0.22, 0.22, frontBeamM, cx, 4.31, 2.37));
 
-  // Ceiling — solid; the storefront has no front wall, so the open
+  // Ceiling - solid; the storefront has no front wall, so the open
   // front below roof height already reveals the interior from the
   // isometric camera. Making this translucent instead painted a
   // colored veil across the whole shop front.
