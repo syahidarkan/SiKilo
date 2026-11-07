@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NOTA LISTRIK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg1:#07080f;--bg2:#0d1021;
+  --g1:rgba(74,222,128,.12);--g2:rgba(56,189,248,.10);--g3:rgba(168,85,247,.08);
+  --glass:rgba(255,255,255,.04);--glass2:rgba(255,255,255,.07);--glass3:rgba(255,255,255,.10);
+  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);
+  --green:#4ade80;--blue:#38bdf8;--purple:#a78bfa;--yellow:#fbbf24;--red:#f87171;--orange:#fb923c;
+  --text:#f1f5f9;--muted:#64748b;--dim:#94a3b8;
+  --r:14px;--r2:10px;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg1);color:var(--text)}
+body{background:radial-gradient(ellipse 80% 60% at 10% -10%,rgba(56,189,248,.12),transparent),
+  radial-gradient(ellipse 60% 60% at 90% 90%,rgba(74,222,128,.08),transparent),var(--bg1);
+  min-height:100vh}
+
+/* ── GLASS HELPERS ── */
+.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--border)}
+.glass2{background:var(--glass2);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid var(--border2)}
+.glass3{background:var(--glass3);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.18)}
+
+/* ── AUTH SCREEN ── */
+#authScreen{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 100% 80% at 50% 0%,rgba(56,189,248,.14),transparent),
+  radial-gradient(ellipse 60% 60% at 80% 100%,rgba(74,222,128,.10),transparent),var(--bg1)}
+.auth-card{width:100%;max-width:420px;padding:40px;border-radius:24px;position:relative}
+.auth-card::before{content:'';position:absolute;inset:-1px;border-radius:25px;
+  background:linear-gradient(135deg,rgba(56,189,248,.3),rgba(74,222,128,.2),rgba(168,85,247,.2));
+  z-index:-1}
+.auth-logo{text-align:center;margin-bottom:32px}
+.auth-logo .icon{font-size:48px;line-height:1}
+.auth-logo h1{font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--blue),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:8px}
+.auth-logo p{color:var(--muted);font-size:13px;margin-top:4px}
+.tab-row{display:flex;background:rgba(0,0,0,.3);border-radius:10px;padding:4px;margin-bottom:24px}
+.tab-btn{flex:1;padding:8px;border:none;background:transparent;color:var(--muted);font-size:13px;
+  font-weight:600;border-radius:8px;cursor:pointer;transition:.2s}
+.tab-btn.active{background:var(--glass3);color:var(--text)}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border2);
+  color:var(--text);padding:11px 14px;border-radius:10px;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(56,189,248,.12)}
+.field input::placeholder{color:var(--muted)}
+.btn-primary{width:100%;padding:13px;background:linear-gradient(135deg,var(--blue),var(--green));
+  border:none;border-radius:10px;color:#0a0f1a;font-weight:700;font-size:15px;cursor:pointer;
+  transition:.2s;margin-top:4px;letter-spacing:.3px}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.auth-err{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);
+  color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
+.auth-err.show{display:block}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ── APP SHELL ── */
+#app{display:none;height:100vh;overflow:hidden;flex-direction:column}
+#app.visible{display:flex}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;gap:14px;padding:0 20px;height:60px;
+  background:rgba(7,8,15,.7);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);
+  position:relative;z-index:50;flex-shrink:0}
+.topbar .logo{font-size:17px;font-weight:800;background:linear-gradient(90deg,var(--blue),var(--green));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;white-space:nowrap}
+.topbar .badge{font-size:10px;font-weight:700;background:rgba(74,222,128,.15);
+  color:var(--green);padding:3px 8px;border-radius:999px;border:1px solid rgba(74,222,128,.25);text-transform:uppercase}
+.ws-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.ws-dot{width:7px;height:7px;border-radius:50%;background:var(--red);transition:.3s}
+.ws-dot.on{background:var(--green);box-shadow:0 0 8px rgba(74,222,128,.6)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user-pill{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;
+  background:var(--glass);border:1px solid var(--border);border-radius:999px;cursor:pointer;transition:.2s}
+.user-pill:hover{background:var(--glass2)}
+.user-av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+.user-name{font-size:13px;font-weight:600}
+.icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:var(--glass);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:16px;transition:.2s}
+.icon-btn:hover{background:var(--glass2)}
+
+/* LAYOUT */
+.shell{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:rgba(7,8,15,.6);backdrop-filter:blur(20px);
+  border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 10px;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.8px;padding:14px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;
+  cursor:pointer;transition:.15s;font-size:13px;font-weight:500;color:var(--dim);margin-bottom:2px;
+  border:1px solid transparent}
+.nav-item:hover{background:var(--glass);color:var(--text)}
+.nav-item.active{background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(74,222,128,.12));
+  color:var(--text);border-color:rgba(56,189,248,.2)}
+.nav-item .nav-icon{font-size:17px;width:20px;text-align:center}
+.nav-item .nav-badge{margin-left:auto;font-size:10px;background:rgba(74,222,128,.2);
+  color:var(--green);padding:2px 7px;border-radius:999px}
+.sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:24px}
+.page{display:none}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px}
+.card-sm{padding:16px;border-radius:var(--r2)}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.6px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:6px;height:6px;border-radius:50%}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+@media(max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);
+  border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden;transition:.2s}
+.kpi-card::after{content:'';position:absolute;top:-30%;right:-20%;width:80%;height:160%;
+  background:radial-gradient(circle,var(--glow,rgba(56,189,248,.06)),transparent 70%)}
+.kpi-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.kpi-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi-value{font-size:32px;font-weight:800;line-height:1.1;margin:6px 0 2px;letter-spacing:-1px}
+.kpi-sub{font-size:12px;color:var(--muted)}
+.kpi-trend{font-size:11px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:4px}
+.kpi-trend.up{color:var(--green)}.kpi-trend.down{color:var(--red)}
+
+/* 2-COL GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;padding:10px 12px;border-bottom:1px solid var(--border)}
+td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+
+/* PILL */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;
+  font-size:11px;font-weight:700}
+.pill-green{background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.2)}
+.pill-blue{background:rgba(56,189,248,.12);color:var(--blue);border:1px solid rgba(56,189,248,.2)}
+.pill-yellow{background:rgba(251,191,36,.12);color:var(--yellow);border:1px solid rgba(251,191,36,.2)}
+.pill-red{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+.pill-purple{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+.pill-gray{background:rgba(100,116,139,.15);color:var(--dim);border:1px solid rgba(100,116,139,.2)}
+
+/* FORM */
+.form-field{margin-bottom:14px}
+.form-field label{display:block;font-size:11px;font-weight:700;color:var(--dim);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.form-field input,.form-field select{width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border2);
+  color:var(--text);padding:10px 13px;border-radius:10px;font-size:13px;outline:none;transition:.2s;font-family:inherit}
+.form-field input:focus,.form-field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(56,189,248,.1)}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+  border:none;transition:.18s;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+.btn-g{background:linear-gradient(135deg,var(--blue),var(--green));color:#0a0f1a}
+.btn-g:hover{opacity:.88;transform:translateY(-1px)}
+.btn-glass{background:var(--glass2);color:var(--text);border:1px solid var(--border2)}
+.btn-glass:hover{background:var(--glass3)}
+.btn-sm{padding:6px 13px;font-size:12px}
+
+/* PROGRESS BAR */
+.prog-wrap{background:rgba(0,0,0,.4);border-radius:999px;height:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:999px;transition:width .6s ease}
+
+/* LIVE FEED */
+.feed-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.feed-item:last-child{border-bottom:none}
+.feed-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:17px;flex-shrink:0}
+.feed-body{flex:1;min-width:0}
+.feed-title{font-size:13px;font-weight:600}
+.feed-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.feed-time{font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* GANTT */
+.gantt-row{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:10px;margin-bottom:8px}
+.gantt-label{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gantt-track{position:relative;height:22px;background:rgba(0,0,0,.4);border-radius:6px;overflow:hidden}
+.gantt-block{position:absolute;top:3px;bottom:3px;border-radius:4px;transition:.3s}
+.gantt-pv{position:absolute;bottom:0;width:1.042%;height:100%;background:rgba(251,191,36,.18)}
+
+/* SPINNER */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);
+  border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ALERT */
+.alert{padding:11px 15px;border-radius:10px;font-size:13px;margin-bottom:14px;display:none}
+.alert.show{display:flex;align-items:center;gap:8px}
+.alert-ok{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);color:var(--green)}
+.alert-err{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+
+/* SECTION HEADING */
+.section-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.section-h h2{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.section-h p{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* WA PREVIEW */
+.wa-preview{background:rgba(0,0,0,.4);border-radius:12px;padding:18px 20px;
+  font-size:13px;line-height:1.9;white-space:pre-wrap;max-height:320px;overflow-y:auto;
+  border:1px solid var(--border);font-family:monospace;color:var(--dim)}
+
+/* CHART PLACEHOLDER */
+.chart-area{position:relative;height:160px;overflow:hidden}
+.chart-svg{width:100%;height:100%}
+
+/* SCROLL */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* PROFILE */
+.profile-av{width:72px;height:72px;border-radius:20px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff}
+
+/* DEVICE STATUS */
+.device-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+
+/* PAGE TITLE */
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:24px;font-weight:800;letter-spacing:-.5px}
+.page-header p{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* REALTIME WAVEFORM */
+#waveCanvas{width:100%;height:80px;display:block}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast-item{padding:12px 18px;background:var(--glass3);backdrop-filter:blur(20px);
+  border-radius:12px;border:1px solid var(--border2);font-size:13px;font-weight:500;
+  animation:slideIn .3s ease;max-width:320px}
+@keyframes slideIn{from{transform:translateX(60px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH ── -->
+<div id="authScreen">
+  <div class="auth-card glass2">
+    <div class="auth-logo">
+      <div class="icon">⚡</div>
+      <h1>NOTA LISTRIK</h1>
+      <p>AI Energy Dispatcher &amp; Solar Right-Sizing untuk UMKM</p>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchAuthTab('login')">Masuk</button>
+      <button class="tab-btn" onclick="switchAuthTab('register')">Daftar</button>
+    </div>
+    <div class="auth-err" id="authErr"></div>
+
+    <!-- LOGIN -->
+    <div id="loginForm">
+      <div class="field"><label>Username</label><input id="lUser" placeholder="Masukkan username" autocomplete="username"></div>
+      <div class="field"><label>Password</label><input id="lPass" type="password" placeholder="Masukkan password" autocomplete="current-password"></div>
+      <button class="btn-primary" onclick="doLogin()">Masuk ke Dashboard →</button>
+      <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:16px">Demo: <b style="color:var(--dim)">admin</b> / <b style="color:var(--dim)">admin123</b></p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerForm" style="display:none">
+      <div class="form-row-2">
+        <div class="field"><label>Username</label><input id="rUser" placeholder="username"></div>
+        <div class="field"><label>Nama Lengkap</label><input id="rName" placeholder="Pak Budi"></div>
+      </div>
+      <div class="field"><label>Email</label><input id="rEmail" type="email" placeholder="email@domain.com"></div>
+      <div class="field"><label>Password</label><input id="rPass" type="password" placeholder="Minimal 6 karakter"></div>
+      <div class="form-row-2">
+        <div class="field"><label>Nama UMKM</label><input id="rUmkm" placeholder="Laundry Pak Budi"></div>
+        <div class="field"><label>Jenis Usaha</label>
+          <select id="rType">
+            <option>Konveksi & Sablon</option>
+            <option>Laundry Kiloan</option>
+            <option>Konveksi & Laundry</option>
+            <option>Toko Kelontong</option>
+            <option>Bengkel Bubut</option>
+            <option>Usaha Campuran</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="doRegister()">Buat Akun &amp; Mulai →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">⚡ NOTA LISTRIK</div>
+    <div class="badge">AI Energy</div>
+    <div class="ws-indicator">
+      <div class="ws-dot" id="wsDot"></div>
+      <span id="wsLabel">Memulai koneksi...</span>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-btn" onclick="toast('🔔 Tidak ada notifikasi baru','blue')" title="Notifikasi">🔔</div>
+      <div class="user-pill" onclick="navTo('profile')">
+        <div class="user-av" id="topAv">?</div>
+        <span class="user-name" id="topName">—</span>
+      </div>
+      <div class="icon-btn" onclick="doLogout()" title="Keluar">🚪</div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="nav-section">Menu Utama</div>
+      <div class="nav-item active" onclick="navTo('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">🏠</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="navTo('monitor')" id="nav-monitor">
+        <span class="nav-icon">📡</span> Live Monitor
+        <span class="nav-badge" id="evBadge" style="display:none">!</span>
+      </div>
+      <div class="nav-section">Fitur AI</div>
+      <div class="nav-item" onclick="navTo('nilm')" id="nav-nilm">
+        <span class="nav-icon">🔬</span> NILM Detector
+      </div>
+      <div class="nav-item" onclick="navTo('dispatch')" id="nav-dispatch">
+        <span class="nav-icon">🤖</span> AI Dispatcher
+      </div>
+      <div class="nav-item" onclick="navTo('sizing')" id="nav-sizing">
+        <span class="nav-icon">☀️</span> Solar Sizing
+      </div>
+      <div class="nav-section">Laporan</div>
+      <div class="nav-item" onclick="navTo('scorecard')" id="nav-scorecard">
+        <span class="nav-icon">📊</span> Bankability Score
+      </div>
+      <div class="nav-item" onclick="navTo('whatsapp')" id="nav-whatsapp">
+        <span class="nav-icon">💬</span> WhatsApp Brief
+      </div>
+      <div class="sidebar-footer">
+        <div class="nav-item" onclick="navTo('profile')" id="nav-profile">
+          <span class="nav-icon">👤</span> Profil & Akun
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1 id="dashGreet">Selamat Datang</h1>
+          <p id="dashSub">Pantau energi UMKM Anda secara real-time dengan AI.</p>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" style="--glow:rgba(56,189,248,.08)">
+            <div class="kpi-label">Daya Aktif</div>
+            <div class="kpi-value" id="dPower" style="color:var(--blue)">— W</div>
+            <div class="kpi-sub" id="dPowerSub">Menunggu data sensor...</div>
+            <div class="prog-wrap" style="margin-top:10px"><div class="prog-fill" id="dPowerBar" style="width:0%;background:var(--blue)"></div></div>
+          </div>
+          <div class="kpi-card" style="--glow:rgba(251,191,36,.08)">
+            <div class="kpi-label">Output PLTS Saat Ini</div>
+            <div class="kpi-value" id="dPV" style="color:var(--yellow)">— W</div>
+            <div class="kpi-sub" id="dPVSub">pvlib Sukoharjo</div>
+            <div class="prog-wrap" style="margin-top:10px"><div class="prog-fill" id="dPVBar" style="width:0%;background:var(--yellow)"></div></div>
+          </div>
+          <div class="kpi-card" style="--glow:rgba(74,222,128,.08)">
+            <div class="kpi-label">Penghematan Hari Ini</div>
+            <div class="kpi-value" id="dSave" style="color:var(--green)">Rp —</div>
+            <div class="kpi-sub" id="dSaveSub">Jalankan dispatch optimizer</div>
+            <div class="kpi-trend up" id="dSaveTrend" style="display:none">↑ vs tanpa optimasi</div>
+          </div>
+          <div class="kpi-card" style="--glow:rgba(167,139,250,.08)">
+            <div class="kpi-label">Mesin Aktif (NILM)</div>
+            <div class="kpi-value" id="dMachines" style="color:var(--purple)">0</div>
+            <div class="kpi-sub">mesin terdeteksi ON</div>
+            <div class="prog-wrap" style="margin-top:10px"><div class="prog-fill" id="dMachBar" style="width:0%;background:var(--purple)"></div></div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--blue)"></span>Live Waveform Daya</div>
+            <canvas id="waveCanvas"></canvas>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:6px">
+              <span>60 detik lalu</span><span>Sekarang</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Event NILM Terbaru</div>
+            <div id="dashFeed" style="max-height:200px;overflow-y:auto">
+              <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">
+                Belum ada event terdeteksi.<br>Kirim data sensor di halaman Live Monitor.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid3">
+          <div class="card card-sm">
+            <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>Status PLTS</div>
+            <div style="font-size:28px;font-weight:800;color:var(--yellow)" id="dPVKwh">—</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">kWh hari ini (estimasi)</div>
+          </div>
+          <div class="card card-sm">
+            <div class="card-title"><span class="dot" style="background:var(--red)"></span>Tarif Grid PLN</div>
+            <div style="font-size:22px;font-weight:800;color:var(--red)" id="dTariff">—</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px" id="dTariffLabel">peak / off-peak</div>
+          </div>
+          <div class="card card-sm">
+            <div class="card-title"><span class="dot" style="background:var(--purple)"></span>Frekuensi Jaringan</div>
+            <div style="font-size:28px;font-weight:800;color:var(--purple)" id="dFreq">50.00 Hz</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">PLN Jawa-Bali nominal</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── LIVE MONITOR ── -->
+      <div class="page" id="page-monitor">
+        <div class="page-header">
+          <h1>📡 Live Monitor</h1>
+          <p>Koneksi WebSocket real-time ke sensor ESP32 — data masuk setiap detik.</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--blue)"></span>Kirim Data Sensor</div>
+            <div class="alert alert-ok" id="monAlert"></div>
+            <div class="grid2">
+              <div class="form-field"><label>Device ID</label><input id="mDevice" value="ESP32-SKH-042"></div>
+              <div class="form-field"><label>Daya Aktif (W)</label><input id="mP" type="number" value="1600"></div>
+              <div class="form-field"><label>Daya Reaktif (VAR)</label><input id="mQ" type="number" value="80"></div>
+              <div class="form-field"><label>V RMS (V)</label><input id="mV" type="number" value="220.5"></div>
+              <div class="form-field"><label>I RMS (A)</label><input id="mI" type="number" value="7.26"></div>
+              <div class="form-field"><label>Frekuensi (Hz)</label><input id="mFreq" type="number" value="50.01"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button class="btn btn-g" onclick="wsSend()">📤 Kirim via WebSocket</button>
+              <button class="btn btn-glass btn-sm" onclick="presetMachine('setrika')">🌡️ Setrika Uap</button>
+              <button class="btn btn-glass btn-sm" onclick="presetMachine('kompresor')">💨 Kompresor</button>
+              <button class="btn btn-glass btn-sm" onclick="presetMachine('motor')">⚙️ Motor Jahit</button>
+              <button class="btn btn-glass btn-sm" onclick="presetMachine('pengering')">🌀 Pengering</button>
+              <button class="btn btn-glass btn-sm" onclick="presetMachine('freezer')">❄️ Freezer</button>
+              <button class="btn btn-glass btn-sm" onclick="startAutoStream()" id="btnStream">▶ Auto-stream 1Hz</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Telemetri Masuk (Live)</div>
+            <div id="liveLog" style="max-height:280px;overflow-y:auto;font-size:12px;font-family:monospace;
+              background:rgba(0,0,0,.4);padding:12px;border-radius:10px;color:var(--dim)">
+              Menunggu data WebSocket...
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="dot" style="background:var(--purple)"></span>Mesin Terdeteksi (NILM)</div>
+          <table>
+            <thead><tr><th>Mesin</th><th>Status</th><th>ΔP (W)</th><th>ΔQ (VAR)</th><th>Confidence</th><th>Metode AI</th><th>Waktu</th></tr></thead>
+            <tbody id="nilmLog"><tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">Belum ada deteksi mesin</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── NILM PAGE ── -->
+      <div class="page" id="page-nilm">
+        <div class="page-header">
+          <h1>🔬 NILM Detector</h1>
+          <p>Non-Intrusive Load Monitoring — AI memecah konsumsi energi per mesin dari 1 sensor induk.</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--blue)"></span>Cara Kerja NILM</div>
+            <div style="font-size:13px;line-height:1.9;color:var(--dim)">
+              <p><b style="color:var(--text)">1. Event Detection (CUSUM)</b><br>Sensor mendeteksi transien daya |ΔP| ≥ 50W dalam jendela 3 detik menggunakan algoritma CUSUM sliding-window.</p>
+              <br>
+              <p><b style="color:var(--text)">2. Feature Extraction</b><br>Setiap event diekstrak menjadi vektor 7 dimensi:<br>
+              <code style="color:var(--blue)">[ΔP, ΔQ, Q/P ratio, V_rms, Inrush_Peak, Hour, DayOfWeek]</code></p>
+              <br>
+              <p><b style="color:var(--text)">3. LightGBM Classifier</b><br>Model gradient boosting mengklasifikasikan event ke 6 kelas mesin. Jika model belum dilatih, fallback ke rule-based heuristic.</p>
+              <br>
+              <p><b style="color:var(--text)">4. Ground Truth Loop</b><br>Smart plug Tuya/Tasmota dipasang 7 hari pertama untuk fine-tuning model per UMKM.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Klasifikasi 6 Kelas Mesin</div>
+            <table>
+              <thead><tr><th>Kelas</th><th>Mesin</th><th>ΔP Range</th><th>Ciri Khas</th></tr></thead>
+              <tbody>
+                <tr><td><span class="pill pill-gray">0</span></td><td>Baseload</td><td>&lt;50W</td><td>Background idle</td></tr>
+                <tr><td><span class="pill pill-blue">1</span></td><td>Motor Jahit</td><td>250–400W</td><td>Q/P tinggi, inrush motor</td></tr>
+                <tr><td><span class="pill pill-purple">2</span></td><td>Kompresor Sablon</td><td>1200–1800W</td><td>Inrush spike tajam ×2.8</td></tr>
+                <tr><td><span class="pill pill-red">3</span></td><td>Setrika Uap</td><td>1000–2200W</td><td>Purely resistif, Q≈0</td></tr>
+                <tr><td><span class="pill pill-yellow">4</span></td><td>Drum Pengering</td><td>800–2000W</td><td>Motor besar, Q/P sedang</td></tr>
+                <tr><td><span class="pill pill-green">5</span></td><td>Freezer</td><td>300–600W</td><td>Siklus periodik kompressor</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:16px">
+              <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>Test Classifier Langsung</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+                <div class="form-field"><label>ΔP (W)</label><input id="nDP" type="number" value="1600"></div>
+                <div class="form-field"><label>ΔQ (VAR)</label><input id="nDQ" type="number" value="80"></div>
+                <div class="form-field"><label>V RMS</label><input id="nV" type="number" value="220.5"></div>
+              </div>
+              <button class="btn btn-g" onclick="testNILM()">🔬 Klasifikasikan</button>
+              <div id="nilmTestResult" style="margin-top:12px;font-size:13px;color:var(--dim)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DISPATCH ── -->
+      <div class="page" id="page-dispatch">
+        <div class="page-header">
+          <h1>🤖 AI Dispatcher</h1>
+          <p>Optimasi jadwal mesin fleksibel ke jendela surya puncak (10:00–14:00) untuk meminimalkan tagihan PLN.</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--blue)"></span>Konfigurasi Dispatch</div>
+            <div class="alert alert-ok" id="dispAlert"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-field"><label>Tanggal</label><input id="dDate" type="date"></div>
+              <div class="form-field"><label>Kapasitas PLTS (kWp)</label><input id="dKwp" type="number" value="2.0" step="0.5"></div>
+              <div class="form-field"><label>Solver</label>
+                <select id="dSolver">
+                  <option value="true">🤖 PPO / Greedy RL Agent</option>
+                  <option value="false">📐 OR-Tools MILP Baseline</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-title" style="margin-top:14px"><span class="dot" style="background:var(--purple)"></span>Mesin Fleksibel</div>
+            <div id="machineChecks"></div>
+            <button class="btn btn-g" onclick="runDispatch()" id="btnDisp" style="margin-top:14px;width:100%">
+              🚀 Jalankan Optimasi
+            </button>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Hasil Optimasi</div>
+            <div id="dispResultArea" style="color:var(--muted);font-size:13px">Jalankan optimasi untuk melihat hasil.</div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>Gantt Chart — Jadwal 24 Jam</div>
+          <div id="ganttArea" style="color:var(--muted);font-size:13px">Jalankan optimasi untuk melihat Gantt chart.</div>
+        </div>
+      </div>
+
+      <!-- ── SIZING ── -->
+      <div class="page" id="page-sizing">
+        <div class="page-header">
+          <h1>☀️ Solar Right-Sizing</h1>
+          <p>Hitung kapasitas PLTS optimal yang menyerap ~100% energi surya tanpa BESS, sesuai Permen ESDM No. 2/2024.</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--yellow)"></span>Input Parameter</div>
+            <div class="alert alert-ok" id="sizAlert"></div>
+            <div class="form-field"><label>Tagihan PLN / Bulan (Rp)</label><input id="sBill" type="number" value="1500000"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-field"><label>Daya Rata-rata (W)</label><input id="sLoad" type="number" value="2500"></div>
+              <div class="form-field"><label>Target Self-Consumption (%)</label><input id="sSC" type="number" value="98" min="80" max="100"></div>
+              <div class="form-field"><label>Jam Operasi / Hari</label><input id="sHours" type="number" value="10"></div>
+              <div class="form-field"><label>Lokasi</label>
+                <select id="sLoc">
+                  <option>Sukoharjo, Jawa Tengah</option>
+                  <option>Solo, Jawa Tengah</option>
+                  <option>Yogyakarta, DIY</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-g" onclick="runSizing()" style="width:100%;margin-top:6px">☀️ Hitung Rekomendasi PLTS</button>
+          </div>
+          <div class="card" id="sizResultCard">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Hasil Rekomendasi</div>
+            <div id="sizBody" style="color:var(--muted);font-size:13px">Masukkan data dan klik Hitung.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SCORECARD ── -->
+      <div class="page" id="page-scorecard">
+        <div class="page-header">
+          <h1>📊 Bankability Scorecard</h1>
+          <p>Rapor Audit Energi & Kelayakan PLTS untuk pengajuan green financing BNI/BRI/BSI.</p>
+        </div>
+        <div class="card">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:30px 0" id="scoreBody">
+            Jalankan Solar Sizing terlebih dahulu, lalu kembali ke halaman ini untuk generate scorecard.
+            <br><br>
+            <button class="btn btn-g" onclick="genScorecard()">📊 Generate Scorecard</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── WHATSAPP ── -->
+      <div class="page" id="page-whatsapp">
+        <div class="page-header">
+          <h1>💬 WhatsApp Brief</h1>
+          <p>Draf pesan harian siap kirim ke pemilik UMKM pukul 17:30 WIB via WhatsApp.</p>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Konfigurasi Pesan</div>
+            <div class="form-field"><label>Nama UMKM</label><input id="waNama" placeholder="Pak Budi – Konveksi"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-field"><label>Penghematan (Rp)</label><input id="waSave" type="number" value="85000"></div>
+              <div class="form-field"><label>% Penghematan</label><input id="waPct" type="number" value="12.5"></div>
+              <div class="form-field"><label>PLTS Terpakai (kWh)</label><input id="waPV" type="number" value="4.2"></div>
+              <div class="form-field"><label>Tarik Grid (kWh)</label><input id="waGrid" type="number" value="18.3"></div>
+            </div>
+            <button class="btn btn-g" onclick="genWA()" style="width:100%;margin-top:6px">💬 Generate Pesan WhatsApp</button>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--green)"></span>Preview Pesan</div>
+            <div class="wa-preview" id="waBox">Klik Generate untuk melihat preview pesan.</div>
+            <button class="btn btn-glass btn-sm" onclick="copyWA()" style="margin-top:12px">📋 Salin Pesan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PROFILE ── -->
+      <div class="page" id="page-profile">
+        <div class="page-header"><h1>👤 Profil & Akun</h1></div>
+        <div class="grid2">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">
+              <div class="profile-av" id="profAv">?</div>
+              <div>
+                <div style="font-size:20px;font-weight:800" id="profName">—</div>
+                <div style="font-size:13px;color:var(--muted)" id="profEmail">—</div>
+                <span class="pill pill-blue" id="profRole" style="margin-top:6px">—</span>
+              </div>
+            </div>
+            <table>
+              <tr><td style="color:var(--muted);width:140px">Username</td><td id="profUser">—</td></tr>
+              <tr><td style="color:var(--muted)">UMKM</td><td id="profUmkm">—</td></tr>
+              <tr><td style="color:var(--muted)">Jenis Usaha</td><td id="profType">—</td></tr>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title"><span class="dot" style="background:var(--blue)"></span>Perangkat Terdaftar</div>
+            <div class="device-row">
+              <div style="width:38px;height:38px;border-radius:10px;background:rgba(56,189,248,.15);
+                display:flex;align-items:center;justify-content:center;font-size:20px">📡</div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600">ESP32-SKH-042</div>
+                <div style="font-size:12px;color:var(--muted)">SCT-013-000 + ZMPT101B — Sukoharjo</div>
+              </div>
+              <span class="pill pill-green">Online</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:16px">
+              Untuk menambah perangkat baru, hubungi support atau scan QR kode pada modul ESP32.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /shell -->
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+const BASE = window.location.origin.startsWith('file') ? 'http://localhost:8000' : window.location.origin;
+const WS_URL = BASE.replace(/^http/, 'ws') + '/ws/telemetry';
+
+let _token = null;
+let _user = null;
+let _ws = null;
+let _wsReconnectTimer = null;
+let _streaming = false;
+let _streamInterval = null;
+let _waveData = new Array(60).fill(0);
+let _nilmEvents = [];
+let _dispatchResult = null;
+let _sizingResult = null;
+let _activeMachines = new Set();
+
+// ── TOAST ────────────────────────────────────
+function toast(msg, type='green') {
+  const colors = {green:'var(--green)',blue:'var(--blue)',red:'var(--red)',yellow:'var(--yellow)'};
+  const t = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.style.borderColor = `${colors[type] || colors.green}44`;
+  el.textContent = msg;
+  t.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── AUTH ─────────────────────────────────────
+function switchAuthTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('loginForm').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab==='register' ? '' : 'none';
+  document.getElementById('authErr').className = 'auth-err';
+}
+
+async function doLogin() {
+  const user = document.getElementById('lUser').value.trim();
+  const pass = document.getElementById('lPass').value;
+  if (!user || !pass) { showAuthErr('Isi username dan password.'); return; }
+  try {
+    const fd = new FormData();
+    fd.append('username', user); fd.append('password', pass);
+    const r = await fetch(`${BASE}/api/v1/auth/login`, { method:'POST', body:fd });
+    const j = await r.json();
+    if (!r.ok) { showAuthErr(j.detail || 'Login gagal'); return; }
+    loginSuccess(j);
+  } catch(e) { showAuthErr('Server tidak terhubung. Pastikan backend jalan.'); }
+}
+
+async function doRegister() {
+  const payload = {
+    username: document.getElementById('rUser').value.trim(),
+    password: document.getElementById('rPass').value,
+    full_name: document.getElementById('rName').value.trim(),
+    email: document.getElementById('rEmail').value.trim(),
+    umkm_name: document.getElementById('rUmkm').value.trim(),
+    umkm_type: document.getElementById('rType').value,
+  };
+  if (!payload.username || !payload.password || !payload.full_name) { showAuthErr('Lengkapi semua field.'); return; }
+  try {
+    const r = await fetch(`${BASE}/api/v1/auth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const j = await r.json();
+    if (!r.ok) { showAuthErr(j.detail || 'Registrasi gagal'); return; }
+    loginSuccess(j);
+  } catch(e) { showAuthErr('Server tidak terhubung.'); }
+}
+
+function loginSuccess(data) {
+  _token = data.access_token;
+  _user = data.user;
+  localStorage.setItem('nl_token', _token);
+  localStorage.setItem('nl_user', JSON.stringify(_user));
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  initApp();
+}
+
+function showAuthErr(msg) {
+  const el = document.getElementById('authErr');
+  el.textContent = '⚠ ' + msg;
+  el.className = 'auth-err show';
+}
+
+function doLogout() {
+  _token = null; _user = null;
+  localStorage.removeItem('nl_token'); localStorage.removeItem('nl_user');
+  if (_ws) { _ws.close(); _ws = null; }
+  stopAutoStream();
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('authScreen').style.display = 'flex';
+}
+
+// ── INIT ─────────────────────────────────────
+function initApp() {
+  const h = new Date().getHours();
+  const greet = h<12 ? 'Selamat Pagi' : h<15 ? 'Selamat Siang' : h<18 ? 'Selamat Sore' : 'Selamat Malam';
+  document.getElementById('dashGreet').textContent = greet + ', ' + (_user?.full_name?.split(' ')[0] || 'Pengguna') + '!';
+  document.getElementById('dashSub').textContent = `UMKM: ${_user?.umkm_name || '—'} — ${_user?.umkm_type || ''}`;
+  document.getElementById('topName').textContent = _user?.full_name?.split(' ')[0] || '—';
+  document.getElementById('topAv').textContent = (_user?.full_name || 'U')[0].toUpperCase();
+  updateProfile();
+  initMachineChecks();
+  document.getElementById('dDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('waNama').value = _user?.umkm_name || 'UMKM Anda';
+  connectWS();
+  updateTariff();
+  loadPVNow();
+  startWaveCanvas();
+  setInterval(updateTariff, 60000);
+  setInterval(loadPVNow, 300000);
+}
+
+function updateProfile() {
+  const u = _user || {};
+  document.getElementById('profAv').textContent = (u.full_name||'U')[0].toUpperCase();
+  document.getElementById('profName').textContent = u.full_name || '—';
+  document.getElementById('profEmail').textContent = u.email || '—';
+  document.getElementById('profUser').textContent = u.username || '—';
+  document.getElementById('profUmkm').textContent = u.umkm_name || '—';
+  document.getElementById('profType').textContent = u.umkm_type || '—';
+  document.getElementById('profRole').textContent = u.role === 'admin' ? '👑 Admin' : '👤 Pengguna';
+}
+
+// ── NAV ──────────────────────────────────────
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  document.getElementById('nav-'+page)?.classList.add('active');
+}
+
+// ── WEBSOCKET ────────────────────────────────
+function connectWS() {
+  if (_ws && _ws.readyState < 2) return;
+  try {
+    _ws = new WebSocket(WS_URL);
+    _ws.onopen = () => {
+      document.getElementById('wsDot').classList.add('on');
+      document.getElementById('wsLabel').textContent = 'WebSocket terhubung';
+      toast('✓ WebSocket terhubung ke server', 'green');
+      clearTimeout(_wsReconnectTimer);
+    };
+    _ws.onmessage = (e) => onWsMessage(JSON.parse(e.data));
+    _ws.onclose = () => {
+      document.getElementById('wsDot').classList.remove('on');
+      document.getElementById('wsLabel').textContent = 'WebSocket terputus — reconnecting...';
+      _wsReconnectTimer = setTimeout(connectWS, 3000);
+    };
+    _ws.onerror = () => { _ws.close(); };
+  } catch {}
+}
+
+function onWsMessage(data) {
+  // Update waveform
+  _waveData.push(data.p_active);
+  if (_waveData.length > 60) _waveData.shift();
+
+  // Update KPIs
+  document.getElementById('dPower').textContent = Math.round(data.p_active).toLocaleString('id') + ' W';
+  document.getElementById('dPowerBar').style.width = Math.min(data.p_active/10000*100,100) + '%';
+  document.getElementById('dPowerSub').textContent = `V: ${data.v_rms?.toFixed(1)}V  I: ${(data.p_active/data.v_rms).toFixed(2)}A`;
+  document.getElementById('dFreq').textContent = (data.frequency || 50).toFixed(2) + ' Hz';
+
+  // Live log
+  const log = document.getElementById('liveLog');
+  const ts = new Date(data.timestamp).toLocaleTimeString('id');
+  const line = `[${ts}] P=${Math.round(data.p_active)}W  Q=${Math.round(data.q_reactive||0)}VAR  V=${data.v_rms?.toFixed(1)}V  f=${data.frequency?.toFixed(2)}Hz${data.detected_event ? `  ⚡ EVENT: ${data.appliance_label} (${(data.confidence*100).toFixed(0)}%)` : ''}`;
+  if (log.textContent === 'Menunggu data WebSocket...') log.textContent = '';
+  log.textContent = line + '\n' + log.textContent;
+  if (log.textContent.length > 4000) log.textContent = log.textContent.slice(0, 4000);
+
+  // NILM event
+  if (data.detected_event) {
+    addNilmRow(data);
+    addDashFeed(data);
+    _activeMachines.add(data.appliance_class);
+    document.getElementById('dMachines').textContent = _activeMachines.size;
+    document.getElementById('dMachBar').style.width = Math.min(_activeMachines.size/6*100,100) + '%';
+    document.getElementById('evBadge').style.display = '';
+    toast(`⚡ NILM: ${data.appliance_label} ${data.event_type === 'ON' ? 'menyala' : 'mati'} (ΔP=${data.delta_p>0?'+':''}${data.delta_p}W)`, 'yellow');
+  }
+
+  // Monitor alert
+  const a = document.getElementById('monAlert');
+  a.className = 'alert alert-ok show';
+  a.textContent = data.detected_event
+    ? `⚡ Event terdeteksi: ${data.appliance_label} — ΔP=${data.delta_p>0?'+':''}${data.delta_p}W (${data.source})`
+    : `✓ Telemetri diterima — P=${Math.round(data.p_active)}W, tidak ada transien baru`;
+}
+
+function addNilmRow(d) {
+  const tbody = document.getElementById('nilmLog');
+  if (tbody.children.length === 1 && tbody.children[0].children[0].colSpan > 1) tbody.innerHTML = '';
+  const tr = document.createElement('tr');
+  const cls = d.appliance_class ?? 0;
+  const colors = ['pill-gray','pill-blue','pill-purple','pill-red','pill-yellow','pill-green'];
+  const icons = ['⚫','⚙️','💨','🌡️','🌀','❄️'];
+  tr.innerHTML = `<td><b>${icons[cls]} ${d.appliance_label||'Background'}</b></td>
+    <td><span class="pill ${d.event_type==='ON'?'pill-green':'pill-gray'}">${d.event_type}</span></td>
+    <td style="color:var(--yellow)">${d.delta_p>0?'+':''}${d.delta_p} W</td>
+    <td style="color:var(--blue)">${d.delta_q>0?'+':''}${Math.round(d.delta_q||0)} VAR</td>
+    <td><span class="pill ${colors[cls]}">${d.confidence?(d.confidence*100).toFixed(0)+'%':'—'}</span></td>
+    <td style="color:var(--muted)">${d.source==='lgbm'?'🤖 LightGBM':'📏 Heuristic'}</td>
+    <td style="color:var(--muted)">${new Date(d.timestamp).toLocaleTimeString('id')}</td>`;
+  tbody.prepend(tr);
+  if (tbody.children.length > 15) tbody.lastChild.remove();
+}
+
+function addDashFeed(d) {
+  const feed = document.getElementById('dashFeed');
+  const icons = ['⚫','⚙️','💨','🌡️','🌀','❄️'];
+  const cls = d.appliance_class ?? 0;
+  const bgColors = ['rgba(100,116,139,.15)','rgba(56,189,248,.12)','rgba(167,139,250,.12)','rgba(248,113,113,.12)','rgba(251,191,36,.12)','rgba(74,222,128,.12)'];
+  if (feed.children[0]?.style.textAlign === 'center') feed.innerHTML = '';
+  const el = document.createElement('div');
+  el.className = 'feed-item';
+  el.innerHTML = `<div class="feed-icon" style="background:${bgColors[cls]}">${icons[cls]}</div>
+    <div class="feed-body">
+      <div class="feed-title">${d.appliance_label||'Background'} — <b style="color:${d.event_type==='ON'?'var(--green)':'var(--red)}'}">${d.event_type}</b></div>
+      <div class="feed-sub">ΔP=${d.delta_p>0?'+':''}${d.delta_p}W | ${d.source==='lgbm'?'LightGBM':'Heuristic'} | conf.${d.confidence?(d.confidence*100).toFixed(0)+'%':'—'}</div>
+    </div>
+    <div class="feed-time">${new Date(d.timestamp).toLocaleTimeString('id')}</div>`;
+  feed.prepend(el);
+  if (feed.children.length > 6) feed.lastChild.remove();
+}
+
+// ── WS SEND ──────────────────────────────────
+const PRESETS = {
+  setrika:   {p:1600,q:50, v:220.5,i:7.26,f:50.01},
+  kompresor: {p:1800,q:600,v:220.3,i:8.17,f:50.00},
+  motor:     {p:380, q:170,v:221.0,i:1.72,f:50.02},
+  pengering: {p:1250,q:420,v:220.8,i:5.66,f:49.99},
+  freezer:   {p:450, q:185,v:221.3,i:2.03,f:50.01},
+};
+function presetMachine(type) {
+  const p = PRESETS[type];
+  document.getElementById('mP').value = p.p;
+  document.getElementById('mQ').value = p.q;
+  document.getElementById('mV').value = p.v;
+  document.getElementById('mI').value = p.i;
+  document.getElementById('mFreq').value = p.f;
+}
+
+function wsSend() {
+  if (!_ws || _ws.readyState !== 1) { toast('WebSocket belum terhubung','red'); connectWS(); return; }
+  const payload = {
+    device_id: document.getElementById('mDevice').value,
+    timestamp: new Date().toISOString(),
+    p_active: +document.getElementById('mP').value,
+    q_reactive: +document.getElementById('mQ').value,
+    v_rms: +document.getElementById('mV').value,
+    i_rms: +document.getElementById('mI').value,
+    frequency: +document.getElementById('mFreq').value,
+  };
+  _ws.send(JSON.stringify(payload));
+}
+
+function startAutoStream() {
+  if (_streaming) {
+    stopAutoStream();
+    document.getElementById('btnStream').textContent = '▶ Auto-stream 1Hz';
+    return;
+  }
+  _streaming = true;
+  document.getElementById('btnStream').textContent = '⏹ Stop Stream';
+  const machines = Object.values(PRESETS);
+  let idx = 0;
+  _streamInterval = setInterval(() => {
+    if (!_streaming) return;
+    const m = machines[idx % machines.length];
+    document.getElementById('mP').value = m.p + (Math.random()-0.5)*40;
+    document.getElementById('mQ').value = m.q + (Math.random()-0.5)*20;
+    document.getElementById('mV').value = (m.v + (Math.random()-0.5)*2).toFixed(1);
+    document.getElementById('mFreq').value = (m.f + (Math.random()-0.5)*0.05).toFixed(3);
+    wsSend();
+    if (Math.random() < 0.08) idx++;
+  }, 1000);
+}
+function stopAutoStream() { _streaming = false; clearInterval(_streamInterval); }
+
+// ── WAVEFORM CANVAS ──────────────────────────
+function startWaveCanvas() {
+  const canvas = document.getElementById('waveCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function draw() {
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 80;
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    const max = Math.max(..._waveData, 1000);
+    const pts = _waveData.map((v,i) => [i/(60-1)*W, H - (v/max)*(H-10) - 5]);
+
+    // Fill
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,'rgba(56,189,248,.35)');
+    grad.addColorStop(1,'rgba(56,189,248,.0)');
+    ctx.beginPath();
+    ctx.moveTo(0,H);
+    pts.forEach(([x,y]) => ctx.lineTo(x,y));
+    ctx.lineTo(W,H);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    pts.forEach(([x,y],i) => i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+    ctx.strokeStyle = 'rgba(56,189,248,.9)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── TARIFF ───────────────────────────────────
+function updateTariff() {
+  const h = new Date().getHours();
+  const peak = h >= 8 && h < 22;
+  const val = peak ? 'Rp 1.699,53' : 'Rp 1.020,00';
+  document.getElementById('dTariff').textContent = val;
+  document.getElementById('dTariff').style.color = peak ? 'var(--red)' : 'var(--green)';
+  document.getElementById('dTariffLabel').textContent = peak ? '/kWh — tarif PEAK (08:00–22:00)' : '/kWh — tarif OFF-PEAK';
+}
+
+// ── PV NOW ───────────────────────────────────
+async function loadPVNow() {
+  const kwp = parseFloat(document.getElementById('dKwp')?.value || document.getElementById('sBill')?.value ? 2.0 : 2.0);
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const r = await fetch(`${BASE}/api/v1/dispatch/optimize`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({target_date:today, jobs:[], kwp_capacity:2.0, use_rl_agent:false})
+    });
+    if (!r.ok) return;
+    const j = await r.json();
+    const slot = new Date().getHours()*4 + Math.floor(new Date().getMinutes()/15);
+    const s = j.schedule[slot];
+    if (s) {
+      const pvW = s.p_pv_w;
+      document.getElementById('dPV').textContent = Math.round(pvW).toLocaleString('id') + ' W';
+      document.getElementById('dPVBar').style.width = Math.min(pvW/2000*100,100)+'%';
+      document.getElementById('dPVSub').textContent = `pvlib Sukoharjo — 2.0 kWp`;
+      const kwhEst = j.total_pv_kwh;
+      document.getElementById('dPVKwh').textContent = kwhEst.toFixed(2);
+    }
+  } catch {}
+}
+
+// ── NILM TEST ────────────────────────────────
+async function testNILM() {
+  const dp = +document.getElementById('nDP').value;
+  const dq = +document.getElementById('nDQ').value;
+  const v = +document.getElementById('nV').value;
+  const res = document.getElementById('nilmTestResult');
+  res.innerHTML = '<span class="spin"></span> Mengklasifikasikan...';
+
+  // Send as WS or REST
+  try {
+    const payload = {
+      device_id:'TEST-001', timestamp:new Date().toISOString(),
+      p_active:300+dp, q_reactive:50+dq, v_rms:v, i_rms:(300+dp)/v, frequency:50.0
+    };
+    const r = await fetch(`${BASE}/api/v1/telemetry/ingest`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if (j.detected_event) {
+      const colors=['pill-gray','pill-blue','pill-purple','pill-red','pill-yellow','pill-green'];
+      const icons=['⚫','⚙️','💨','🌡️','🌀','❄️'];
+      const cls = j.appliance_class??0;
+      res.innerHTML = `<span class="pill ${colors[cls]}">${icons[cls]} ${j.appliance_label}</span>
+        <span style="margin-left:10px;color:var(--dim)">Conf: ${(j.confidence*100).toFixed(0)}% — ${j.message?.includes('lgbm')?'LightGBM':'Heuristic'}</span>`;
+    } else {
+      res.innerHTML = `<span class="pill pill-gray">Baseload / No Event</span> <span style="color:var(--muted);font-size:12px;margin-left:8px">ΔP terlalu kecil (&lt;50W threshold)</span>`;
+    }
+  } catch(e) {
+    res.innerHTML = `<span style="color:var(--red)">${e.message}</span>`;
+  }
+}
+
+// ── DISPATCH ─────────────────────────────────
+const DISPATCH_MACHINES = [
+  {machine_id:'boiler-setrika-01',appliance_class:3,label:'Setrika Pemanas Uap',power_w:1500,daily_runtime_minutes:300,deadline_hour:17,is_flexible:true},
+  {machine_id:'drum-pengering-01',appliance_class:4,label:'Drum Pengering Laundry',power_w:1200,daily_runtime_minutes:240,deadline_hour:17,is_flexible:true},
+  {machine_id:'kompresor-sablon-01',appliance_class:2,label:'Kompresor Udara Sablon',power_w:1500,daily_runtime_minutes:180,deadline_hour:17,is_flexible:true},
+  {machine_id:'oven-preheating-01',appliance_class:3,label:'Oven Pre-heating',power_w:2000,daily_runtime_minutes:120,deadline_hour:15,is_flexible:true},
+];
+function initMachineChecks() {
+  document.getElementById('machineChecks').innerHTML = DISPATCH_MACHINES.map((m,i)=>`
+    <label style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--glass);
+      border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px;font-size:13px">
+      <input type="checkbox" id="mc${i}" checked style="width:14px;height:14px">
+      <span>${m.label}</span>
+      <span style="margin-left:auto;color:var(--muted);font-size:12px">${m.power_w}W × ${m.daily_runtime_minutes/60}h</span>
+    </label>`).join('');
+}
+
+async function runDispatch() {
+  const btn = document.getElementById('btnDisp');
+  btn.innerHTML = '<span class="spin"></span> Mengoptimasi...';
+  btn.disabled = true;
+  document.getElementById('dispAlert').className = 'alert';
+
+  const selectedJobs = DISPATCH_MACHINES.filter((_,i) => document.getElementById(`mc${i}`)?.checked);
+  const payload = {
+    target_date: document.getElementById('dDate').value,
+    jobs: selectedJobs,
+    kwp_capacity: +document.getElementById('dKwp').value || 2.0,
+    use_rl_agent: document.getElementById('dSolver').value === 'true',
+  };
+
+  try {
+    const r = await fetch(`${BASE}/api/v1/dispatch/optimize`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    const j = await r.json();
+    _dispatchResult = j;
+
+    document.getElementById('dispAlert').className = 'alert alert-ok show';
+    document.getElementById('dispAlert').textContent = `✓ Optimasi selesai — hemat Rp ${Math.round(j.savings_idr).toLocaleString('id')} (${j.savings_pct.toFixed(1)}%)`;
+
+    document.getElementById('dispResultArea').innerHTML = `
+      <div class="grid3" style="margin-bottom:0">
+        <div class="card card-sm" style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">PENGHEMATAN</div>
+          <div style="font-size:24px;font-weight:800;color:var(--green)">Rp ${(j.savings_idr/1000).toFixed(0)}K</div>
+          <div style="font-size:12px;color:var(--green)">${j.savings_pct.toFixed(1)}%</div>
+        </div>
+        <div class="card card-sm" style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">PLTS TERSERAP</div>
+          <div style="font-size:24px;font-weight:800;color:var(--yellow)">${j.total_pv_kwh.toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--muted)">kWh</div>
+        </div>
+        <div class="card card-sm" style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">SOLVER</div>
+          <div style="font-size:14px;font-weight:700;color:var(--blue);margin-top:8px">${j.solver_used}</div>
+          <div style="font-size:12px;color:var(--muted)">Curtail: ${j.curtailment_kwh.toFixed(3)} kWh</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--dim)">
+        Grid: ${j.total_grid_kwh.toFixed(2)} kWh &nbsp;|&nbsp;
+        Total cost: Rp ${Math.round(j.total_cost_idr).toLocaleString('id')} &nbsp;|&nbsp;
+        Baseline: Rp ${Math.round(j.baseline_cost_idr).toLocaleString('id')}
+      </div>`;
+
+    document.getElementById('dSave').textContent = 'Rp ' + Math.round(j.savings_idr).toLocaleString('id');
+    document.getElementById('dSaveTrend').style.display = '';
+
+    renderGantt(j, selectedJobs);
+    toast(`🤖 Dispatch selesai — hemat Rp ${(j.savings_idr/1000).toFixed(0)}K`, 'green');
+  } catch(e) {
+    document.getElementById('dispAlert').className = 'alert alert-err show';
+    document.getElementById('dispAlert').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.innerHTML = '🚀 Jalankan Optimasi';
+    btn.disabled = false;
+  }
+}
+
+function renderGantt(data, jobs) {
+  const area = document.getElementById('ganttArea');
+  if (!jobs.length) { area.innerHTML = '<div style="color:var(--muted)">Tidak ada mesin dipilih.</div>'; return; }
+  const pvCurve = data.schedule.map(s => s.p_pv_w);
+  const maxPV = Math.max(...pvCurve, 1);
+  const slot = new Date().getHours()*4 + Math.floor(new Date().getMinutes()/15);
+  const COLORS = ['var(--green)','var(--blue)','var(--yellow)','var(--red)','var(--purple)','var(--orange)'];
+
+  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+    ${data.target_date} — Solver: <b style="color:var(--blue)">${data.solver_used}</b> &nbsp;|&nbsp;
+    Hemat <b style="color:var(--green)">Rp ${Math.round(data.savings_idr).toLocaleString('id')}</b>
+  </div>`;
+
+  // PV bar chart
+  html += `<div style="position:relative;height:50px;background:rgba(0,0,0,.4);border-radius:8px;overflow:hidden;margin-bottom:4px">`;
+  for (let t=0;t<96;t++) {
+    const pct = pvCurve[t]/maxPV*100;
+    html += `<div style="position:absolute;bottom:0;left:${t/96*100}%;width:${1/96*100}%;height:${pct}%;background:rgba(251,191,36,.4)"></div>`;
+  }
+  html += `<div style="position:absolute;top:0;left:${slot/96*100}%;width:2px;height:100%;background:var(--blue);opacity:.7"></div>`;
+  html += `<div style="position:absolute;top:4px;left:4px;font-size:10px;color:rgba(251,191,36,.8);font-weight:700">☀️ Kurva Surya</div>`;
+  html += `</div>`;
+
+  // Hour labels
+  html += `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:10px;padding:0 2px">
+    <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+  </div>`;
+
+  // Machine rows
+  jobs.forEach((m,idx) => {
+    const c = COLORS[idx % COLORS.length];
+    const slotsNeeded = m.daily_runtime_minutes/15;
+    // Find solar-peak slots
+    const ranked = data.schedule.slice(0,68).sort((a,b)=>b.p_pv_w-a.p_pv_w).slice(0,slotsNeeded);
+    const onSet = new Set(ranked.map(s=>s.slot_index));
+    while(onSet.size < slotsNeeded) { for(let t=36;t<68;t++) { if(!onSet.has(t)){onSet.add(t);break;} } break; }
+
+    html += `<div class="gantt-row" style="margin-bottom:6px">
+      <div class="gantt-label">${m.label}</div>
+      <div class="gantt-track">`;
+
+    // Current time line
+    html += `<div style="position:absolute;top:0;left:${slot/96*100}%;width:1px;height:100%;background:var(--blue);opacity:.5;z-index:1"></div>`;
+
+    // ON blocks
+    let inRun=false, start=0;
+    for(let t=0;t<=96;t++) {
+      const on = onSet.has(t) && t<96;
+      if(on && !inRun) { start=t; inRun=true; }
+      if(!on && inRun) {
+        html += `<div class="gantt-block" style="left:${start/96*100}%;width:${(t-start)/96*100}%;background:${c};opacity:.75"></div>`;
+        inRun=false;
+      }
+    }
+    html += `</div></div>`;
+  });
+
+  area.innerHTML = html;
+}
+
+// ── SIZING ───────────────────────────────────
+async function runSizing() {
+  const alert = document.getElementById('sizAlert');
+  alert.className = 'alert';
+  document.getElementById('sizBody').innerHTML = '<span class="spin"></span> Menghitung dengan pvlib...';
+
+  const avgLoad = +document.getElementById('sLoad').value || 2500;
+  const sc = (+document.getElementById('sSC').value||98)/100;
+  const profiles = Array.from({length:30},(_,d) => {
+    const dt = new Date(); dt.setDate(dt.getDate()-30+d);
+    return { date:dt.toISOString().split('T')[0], hourly_kwh:Array.from({length:24},(_,h) => {
+      const f = h>=7&&h<=21 ? 1+(Math.sin((h-7)*Math.PI/14)*.4) : 0.3;
+      return +(avgLoad*f/1000).toFixed(4);
+    })};
+  });
+
+  try {
+    const r = await fetch(`${BASE}/api/v1/sizing/calculate`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({load_profiles:profiles, target_self_consumption_pct:sc, include_battery:false})
+    });
+    const j = await r.json();
+    _sizingResult = j;
+
+    const pbpColor = j.payback_period_years<=5?'var(--green)':j.payback_period_years<=8?'var(--yellow)':'var(--red)';
+    const scoreColor = j.permen_esdm_compliant ? 'var(--green)' : 'var(--red)';
+
+    document.getElementById('sizBody').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div class="card card-sm" style="text-align:center;border-color:rgba(251,191,36,.2)">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">KAPASITAS OPTIMAL</div>
+          <div style="font-size:36px;font-weight:800;color:var(--yellow)">${j.recommended_kwp}</div>
+          <div style="font-size:14px;color:var(--muted)">kWp</div>
+        </div>
+        <div class="card card-sm" style="text-align:center;border-color:${pbpColor}44">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">PAYBACK PERIOD</div>
+          <div style="font-size:36px;font-weight:800;color:${pbpColor}">${j.payback_period_years}</div>
+          <div style="font-size:14px;color:var(--muted)">tahun</div>
+        </div>
+        <div class="card card-sm" style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">CAPEX</div>
+          <div style="font-size:22px;font-weight:700">Rp ${(j.capex_idr/1e6).toFixed(1)}jt</div>
+        </div>
+        <div class="card card-sm" style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">HEMAT/TAHUN</div>
+          <div style="font-size:22px;font-weight:700;color:var(--green)">Rp ${(j.annual_savings_idr/1e6).toFixed(2)}jt</div>
+        </div>
+      </div>
+      <table>
+        <tr><td style="color:var(--muted)">NPV 25 tahun</td><td><b style="color:var(--green)">Rp ${(j.npv_idr/1e6).toFixed(1)}jt</b></td></tr>
+        <tr><td style="color:var(--muted)">LCOE</td><td>Rp ${j.lcoe_idr_per_kwh.toFixed(0)}/kWh <span style="color:var(--muted);font-size:11px">(vs PLN Rp 1.699)</span></td></tr>
+        <tr><td style="color:var(--muted)">Self-consumption</td><td><b>${j.self_consumption_rate_pct}%</b></td></tr>
+        <tr><td style="color:var(--muted)">CO₂ dihindari</td><td>${j.co2_avoided_kg_per_year.toFixed(0)} kg/tahun</td></tr>
+        <tr><td style="color:var(--muted)">Permen ESDM 2/2024</td><td><span class="pill ${j.permen_esdm_compliant?'pill-green':'pill-red'}">${j.permen_esdm_compliant?'✓ Compliant':'⚠ Review'}</span></td></tr>
+      </table>
+      <div style="font-size:12px;color:var(--muted);margin-top:12px;font-style:italic">${j.recommendation_note}</div>`;
+
+    alert.className = 'alert alert-ok show';
+    alert.textContent = `✓ Rekomendasi: ${j.recommended_kwp} kWp — PBP ${j.payback_period_years} tahun`;
+    toast(`☀️ Sizing: ${j.recommended_kwp} kWp, PBP ${j.payback_period_years} tahun`, 'yellow');
+  } catch(e) {
+    document.getElementById('sizBody').textContent = 'Error: ' + e.message;
+    alert.className = 'alert alert-err show';
+    alert.textContent = 'Gagal: ' + e.message;
+  }
+}
+
+// ── SCORECARD ────────────────────────────────
+async function genScorecard() {
+  if (!_sizingResult) { toast('Jalankan Solar Sizing dulu','yellow'); navTo('sizing'); return; }
+  const j = _sizingResult;
+  const sc = Math.min(100,Math.max(0,
+    0.3*Math.max(0,100-Math.round((j.payback_period_years-3)*10)) +
+    0.25*Math.min(100,Math.round(j.npv_idr/1e6)) +
+    0.25*j.self_consumption_rate_pct +
+    0.20*(j.permen_esdm_compliant?100:50)
+  ));
+  const risk = sc>=80?['RENDAH','pill-green','LAYAK Tier A — bunga preferensial']:
+               sc>=60?['SEDANG','pill-yellow','LAYAK Tier B — bunga standar']:
+               ['TINGGI','pill-red','Perlu tinjauan lebih lanjut'];
+
+  document.getElementById('scoreBody').innerHTML = `
+    <div style="text-align:left">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+        <div style="text-align:center">
+          <div style="font-size:11px;color:var(--muted)">SKOR KELAYAKAN</div>
+          <div style="font-size:56px;font-weight:900;color:${sc>=80?'var(--green)':sc>=60?'var(--yellow)':'var(--red)'};">${Math.round(sc)}</div>
+          <div style="font-size:13px;color:var(--muted)">/100</div>
+        </div>
+        <div>
+          <span class="pill ${risk[1]}" style="font-size:14px;padding:6px 16px">Risiko ${risk[0]}</span>
+          <div style="font-size:14px;font-weight:600;margin-top:10px;color:var(--text)">${risk[2]}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">UMKM: ${_user?.umkm_name||'—'} · ${_user?.umkm_type||'—'}</div>
+        </div>
+      </div>
+      <div class="grid3" style="margin-bottom:16px">
+        <div class="card card-sm">
+          <div style="font-size:11px;color:var(--muted)">Kapasitas PLTS</div>
+          <div style="font-size:22px;font-weight:800;color:var(--yellow)">${j.recommended_kwp} kWp</div>
+        </div>
+        <div class="card card-sm">
+          <div style="font-size:11px;color:var(--muted)">NPV 25 Tahun</div>
+          <div style="font-size:22px;font-weight:800;color:var(--green)">Rp ${(j.npv_idr/1e6).toFixed(1)}jt</div>
+        </div>
+        <div class="card card-sm">
+          <div style="font-size:11px;color:var(--muted)">CO₂ Dihindari</div>
+          <div style="font-size:22px;font-weight:800;color:var(--blue)">${j.co2_avoided_kg_per_year.toFixed(0)} kg/yr</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Komponen Skor</th><th>Nilai</th><th>Bobot</th></tr></thead>
+        <tbody>
+          <tr><td>Payback Period</td><td>${j.payback_period_years} tahun</td><td>30%</td></tr>
+          <tr><td>NPV</td><td>Rp ${(j.npv_idr/1e6).toFixed(1)}jt</td><td>25%</td></tr>
+          <tr><td>Self-consumption Rate</td><td>${j.self_consumption_rate_pct}%</td><td>25%</td></tr>
+          <tr><td>Permen ESDM 2/2024</td><td>${j.permen_esdm_compliant?'✓ Compliant':'⚠ Non-compliant'}</td><td>20%</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:12px;color:var(--muted);margin-top:16px;font-style:italic">
+        * Laporan ini dibuat otomatis oleh NOTA LISTRIK AI berdasarkan simulasi pvlib. Verifikasi lapangan diperlukan untuk pengajuan resmi.
+      </div>
+    </div>`;
+}
+
+// ── WHATSAPP ─────────────────────────────────
+async function genWA() {
+  document.getElementById('waBox').textContent = 'Memuat...';
+  const params = new URLSearchParams({
+    umkm_name: document.getElementById('waNama').value || _user?.umkm_name || 'UMKM Anda',
+    dispatch_savings_idr: +document.getElementById('waSave').value,
+    dispatch_savings_pct: +document.getElementById('waPct').value,
+    total_pv_kwh: +document.getElementById('waPV').value,
+    total_grid_kwh: +document.getElementById('waGrid').value,
+    curtailment_kwh: 0.0,
+  });
+  try {
+    const r = await fetch(`${BASE}/api/v1/agent/whatsapp/daily-brief?${params}`);
+    const j = await r.json();
+    document.getElementById('waBox').textContent = j.message;
+    toast('💬 Pesan WhatsApp siap', 'green');
+  } catch(e) { document.getElementById('waBox').textContent = 'Error: ' + e.message; }
+}
+
+function copyWA() {
+  const text = document.getElementById('waBox').textContent;
+  navigator.clipboard.writeText(text).then(()=>toast('📋 Pesan disalin ke clipboard','green'));
+}
+
+// ── AUTO-LOGIN ────────────────────────────────
+(function tryAutoLogin() {
+  const t = localStorage.getItem('nl_token');
+  const u = localStorage.getItem('nl_user');
+  if (t && u) {
+    _token = t;
+    _user = JSON.parse(u);
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+    initApp();
+  }
+})();
+
+// Enter key on login
+document.getElementById('lPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('lUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>
