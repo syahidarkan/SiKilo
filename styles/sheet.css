@@ -221,3 +221,7 @@
 .sf-bar a:hover { color: #fff; }
 @media (max-width: 860px) { .sf-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .sf-grid > :first-child { grid-column: 1 / -1; } }
 @media (max-width: 480px) { .sf-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.sf-event { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+.sf-logo { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 10px; background: #fff; }
+.sf-logo img { height: 34px; width: auto; display: block; }

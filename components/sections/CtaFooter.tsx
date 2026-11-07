@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ArrowRight, ArrowUp, UserPlus, Zap } from 'lucide-react';
 import { DASHBOARD_URL, REGISTER_URL } from '@/lib/waskita';
 import Reveal from '@/components/Reveal';
@@ -94,7 +95,12 @@ export default function CtaFooter() {
           </div>
           <div className="sf-bar">
             <div className="sheet-w" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '10px 24px', width: '100%' }}>
-              <span>© 2026 WASKITA · UNS Innovation Hackathon · Energy Track Sub-tema C</span>
+              <span className="sf-event">
+                <span className="sf-logo">
+                  <Image src="/uns-innovation-hackathon.png" alt="UNS Innovation Hackathon" width={1811} height={479} sizes="160px" />
+                </span>
+                <span>© 2026 WASKITA · Energy Track Sub-tema C</span>
+              </span>
               <a href="#top">Kembali ke atas <ArrowUp size={13} /></a>
             </div>
           </div>
