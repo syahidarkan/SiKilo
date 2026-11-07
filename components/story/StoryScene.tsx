@@ -641,7 +641,7 @@ export default function StoryScene() {
     const clouds = qa('.st-cloud');
     const tags = qa('.st-tag');
     const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim'), fade = q('.st-fade');
-    const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]');
+    const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]'), stamp = q('.st-stamp');
     const cA = new THREE.Color(), cB = new THREE.Color(), cT = new THREE.Color(), cI = new THREE.Color();
     const inkDark = new THREE.Color(0x14281a), inkLight = new THREE.Color(0xf1f7f2), mutDark = new THREE.Color(0x3f5a46), mutLight = new THREE.Color(0xc4d4ca);
     const fmt = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
@@ -736,7 +736,7 @@ export default function StoryScene() {
       const pv = PV_KWP * Math.max(0, e) * 0.92 * panelOn;
       const grid = Math.max(0, load - pv);
       const selfShare = load > 0 ? Math.min(pv, load) / load : 0;
-      const nilm = smooth(0.27, 0.34, p) * (1 - smooth(0.93, 0.98, p));
+      const nilm = smooth(0.27, 0.34, p) * (1 - smooth(0.5, 0.55, p));
 
       machines.forEach((m, i) => {
         if (m.spin) m.spin.rotation.z -= dt * 6 * m.act * (reduced ? 0 : 1);
@@ -826,6 +826,7 @@ export default function StoryScene() {
       rGrid.textContent = fmt(grid) + ' kW';
       rSelf.textContent = Math.round(selfShare * 100) + '%';
       rBar.style.width = Math.round(selfShare * 100) + '%';
+      stamp.classList.toggle('on', selfShare > 0.85 && pv > 0.3);
 
       renderer.render(scene, camera);
     }
@@ -877,14 +878,16 @@ export default function StoryScene() {
           </div>
         ))}
 
-        <dl className="st-readout" aria-label="Contoh pembacaan listrik, ilustrasi">
-          <small><span>Contoh pembacaan</span><span data-r="hour">05.18</span></small>
-          <dt>Beban toko</dt><dd data-r="load">0,3 kW</dd>
-          <dt>Produksi surya</dt><dd data-r="pv">0,0 kW</dd>
-          <dt>Dari PLN</dt><dd data-r="grid">0,3 kW</dd>
-          <dt>Porsi surya</dt><dd data-r="self">0%</dd>
-          <div className="st-bar"><i data-r="bar" /></div>
-        </dl>
+        <div className="st-nota" role="group" aria-label="Contoh pembacaan listrik, ilustrasi">
+          <span className="st-stamp" aria-hidden="true">Hemat<br />surya</span>
+          <div className="st-nota-head"><b>Nota listrik</b><span data-r="hour">05.18</span></div>
+          <div className="st-row"><span>Beban toko</span><i /><b data-r="load">0,3 kW</b></div>
+          <div className="st-row pln"><span>Dari PLN</span><i /><b data-r="grid">0,3 kW</b></div>
+          <div className="st-row sur"><span>Dari surya</span><i /><b data-r="pv">0,0 kW</b></div>
+          <div className="st-total"><span>Porsi surya</span><b data-r="self">0%</b></div>
+          <div className="st-split"><i data-r="bar" /></div>
+          <div className="st-nota-foot">Contoh, bukan data lapangan</div>
+        </div>
         <div className="st-hint">Gulir ↓</div>
       </div>
     </div>
