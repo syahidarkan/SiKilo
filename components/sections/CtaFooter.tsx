@@ -24,6 +24,7 @@ export default function CtaFooter() {
   return (
     <>
       <section className="close" aria-labelledby="h-cta">
+        <div className="close-dots" aria-hidden="true" />
         <div className="sheet-w">
           <Reveal>
             <div className="sh-mark" style={{ justifyContent: 'center' }}>
@@ -31,7 +32,7 @@ export default function CtaFooter() {
               <span>Mulai</span>
             </div>
             <h2 id="h-cta" className="close-title">
-              Hitung dulu, pasang kemudian.
+              Hitung dulu, <em>pasang kemudian.</em>
             </h2>
             <p className="close-lead">
               Masukkan daya PLN dan mesin di usaha Anda. Perkiraan ukuran PLTS dan waktu balik modal langsung muncul di simulator.
@@ -62,9 +63,6 @@ export default function CtaFooter() {
                   WASKITA
                 </a>
                 <p className="sf-tag">Membaca listrik tiap mesin, menggeser jadwalnya ke jam matahari, dan menyiapkan rapor untuk bank.</p>
-                <a className="sf-cta" href="#simulator-section">
-                  Coba simulator <ArrowRight size={15} />
-                </a>
               </div>
 
               <nav className="sf-col" aria-label="Jelajahi">
@@ -87,8 +85,13 @@ export default function CtaFooter() {
               </nav>
 
               <div className="sf-col">
-                <h3>Kemitraan</h3>
-                <p>Belum ada MoU resmi. Yang sedang dijajaki: Disperinaker Sukoharjo, UMKM binaan untuk uji coba, dan tenan energi inkubator UNS.</p>
+                <h3>Calon mitra</h3>
+                <ul className="sf-partners" aria-label="Calon mitra">
+                  <li>
+                    <Image src="/logos/sukoharjo.svg" alt="Lambang Kabupaten Sukoharjo" width={85} height={108} unoptimized />
+                    <span>Disperinaker<br />Sukoharjo</span>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -102,6 +105,21 @@ export default function CtaFooter() {
                 </span>
                 <span>© 2026 WASKITA · Energy Track Sub-tema C</span>
               </span>
+              <ul className="sf-inst" aria-label="Logo institusi terkait">
+                <li>
+                  <Image src="/logos/kemdikbud.png" alt="Tut Wuri Handayani, logo Kementerian Pendidikan" width={520} height={527} />
+                </li>
+                <li>
+                  <Image className="sf-on-light" src="/logos/lpdp.png" alt="LPDP, Lembaga Pengelola Dana Pendidikan" width={720} height={346} />
+                  <Image className="sf-on-dark" src="/logos/lpdp-white.png" alt="" aria-hidden="true" width={720} height={346} />
+                </li>
+                <li>
+                  <Image src="/logos/lppm-uns.png" alt="LPPM Universitas Sebelas Maret" width={300} height={238} />
+                </li>
+                <li>
+                  <Image src="/logos/logo-s.png" alt="Logo gelombang biru dan jingga" width={520} height={559} />
+                </li>
+              </ul>
               <a href="#top">Kembali ke atas <ArrowUp size={13} /></a>
             </div>
           </div>

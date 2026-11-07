@@ -6,7 +6,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import './story.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Satu hari di Laundry Barokah, dibangun sebagai ruko deret yang nyata:
+   Satu hari di Lamia Laundry, dibangun sebagai ruko deret yang nyata:
    plesteran, keramik, paving, kaca, rolling door, tiang listrik dengan kabel melendut.
    Kamera orthographic isometrik. Scroll mengatur kamera, jam (langit, matahari,
    bayangan), beban tiap mesin, produksi surya, dan aliran listrik.
@@ -15,7 +15,7 @@ import './story.css';
    ───────────────────────────────────────────────────────────────────────────── */
 
 const CHAPTERS = [
-  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Laundry Barokah', body: 'Tagihan listrik sering baru terasa di akhir bulan, saat semuanya sudah terlambat. Ikuti satu hari kerja di toko ini dan lihat ke mana listrik Anda sebenarnya mengalir.' },
+  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Lamia Laundry', body: 'Tagihan listrik sering baru terasa di akhir bulan, saat semuanya sudah terlambat. Ikuti satu hari kerja di toko ini dan lihat ke mana listrik Anda sebenarnya mengalir.' },
   { a: 0.14, b: 0.26, kick: '01 · Pasang sensor', title: 'Satu sensor di panel, tanpa bongkar instalasi', body: 'Sensor cukup dijepitkan pada kabel masuk. Tidak perlu memutus listrik dan tidak perlu memasang alat di setiap mesin. Dari satu titik itu, pemakaian seluruh toko terbaca.' },
   { a: 0.3, b: 0.5, kick: '02 · Kenali mesin', title: 'Kini jelas mesin mana yang paling boros', body: 'Dengan NILM, setiap mesin dikenali dari pola arusnya. Pada pagi hari, pengering dan setrika uap menyala bersamaan, dan seluruh bebannya ditanggung PLN.' },
   { a: 0.54, b: 0.66, kick: '03 · Manfaatkan matahari', title: 'Matahari naik, panel surya mulai bekerja', body: 'Listrik dari panel hanya menghemat jika langsung terpakai. Sejak terbitnya Permen ESDM Nomor 2 Tahun 2024, kelebihan listrik tidak lagi memotong tagihan. Karena itu, waktu pemakaian menjadi kunci.' },
@@ -43,6 +43,16 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (a: number, b: number, x: number) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 const backOut = (t: number) => { const c = 1.70158, u = clamp01(t) - 1; return 1 + (c + 1) * u * u * u + c * u * u; };
 const win = (p: number, a: number, b: number) => smooth(a, a + 0.02, p) * (1 - smooth(b - 0.02, b, p));
+/* penanda tahap pada tracker di atas: posisi mengikuti awal tiap bab */
+const HUD_MARKS = [
+  { t: 'Sensor', at: 0.14 },
+  { t: 'Mesin', at: 0.3 },
+  { t: 'Surya', at: 0.54 },
+  { t: 'Jadwal', at: 0.69 },
+  { t: 'Hasil', at: 0.9 },
+];
+const phaseOf = (h: number) => (h < 6.5 ? 'Subuh' : h < 11 ? 'Pagi' : h < 15 ? 'Siang terik' : h < 18 ? 'Sore' : 'Malam');
+
 const hourAt = (p: number) => {
   for (let i = 0; i < HOUR_KEYS.length - 1; i++) {
     const [p0, h0] = HOUR_KEYS[i], [p1, h1] = HOUR_KEYS[i + 1];
@@ -202,7 +212,7 @@ export default function StoryScene() {
       x.fillStyle = '#1b6b3c'; x.fillRect(0, 0, 1024, 192);
       x.fillStyle = '#f2c230'; x.fillRect(0, 150, 1024, 42);
       x.fillStyle = '#fff'; x.font = '800 96px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText('LAUNDRY BAROKAH', 512, 72);
+      x.fillText('LAMIA LAUNDRY', 512, 72);
       x.fillStyle = '#10301f'; x.font = '700 30px system-ui, sans-serif';
       x.fillText('KILOAN · SATUAN · SETRIKA UAP', 512, 172);
     });
@@ -641,6 +651,8 @@ export default function StoryScene() {
     const clouds = qa('.st-cloud');
     const tags = qa('.st-tag');
     const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim'), fade = q('.st-fade');
+    const hud = q('.st-hud'), hTime = q('.hud-time'), hPhase = q('.hud-phase'), hOrb = q('.hud-orb'), hPln = q('.hud-pln'), hPv = q('.hud-pv');
+    const hFill = q('.hud-fill'), hBpv = q('.hud-bpv'), hDots = qa('.hud-dot');
     const cA = new THREE.Color(), cB = new THREE.Color(), cT = new THREE.Color(), cI = new THREE.Color();
     const inkDark = new THREE.Color(0x14281a), inkLight = new THREE.Color(0xf1f7f2), mutDark = new THREE.Color(0x3f5a46), mutLight = new THREE.Color(0xc4d4ca);
     const fmt = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
@@ -815,8 +827,34 @@ export default function StoryScene() {
       scrim.style.opacity = maxO.toFixed(2);
       hint.style.opacity = p > 0.02 ? '0' : '1';
 
-      fade.style.opacity = smooth(0.93, 1, p).toFixed(3);
+      /* tracker di atas: jam, sumber listrik, dan tahap cerita */
+      const hh24 = Math.floor(hr), mm = Math.floor((hr - hh24) * 60);
+      hTime.textContent = `${String(hh24 % 24).padStart(2, '0')}.${String(mm).padStart(2, '0')}`;
+      hPhase.textContent = phaseOf(hr);
+      hOrb.dataset.d = night > 0.5 ? 'night' : 'day';
+      const pvUsed = Math.min(pv, load);
+      hPln.textContent = fmt(grid, 1);
+      hPv.textContent = fmt(pvUsed, 1);
+      hBpv.style.width = (load > 0 ? (pvUsed / load) * 100 : 0).toFixed(1) + '%';
+      hFill.style.transform = `scaleX(${clamp01(p).toFixed(3)})`;
+      hDots.forEach((d, i) => d.classList.toggle('on', p >= HUD_MARKS[i].at - 0.005));
+      hud.style.opacity = (1 - smooth(0.94, 0.99, p)).toFixed(3);
 
+      const fadeAmt = smooth(0.93, 1, p);
+      fade.style.opacity = fadeAmt.toFixed(3);
+
+      /* mode gelap: gradasi akhir berujung ke kertas gelap, jadi teks ikut terang */
+      if (document.documentElement.dataset.theme === 'dark' && fadeAmt > 0) {
+        const cur = (name: string) => cI.set(sticky.style.getPropertyValue(name).trim() || '#000000');
+        sticky.style.setProperty('--ink', '#' + cur('--ink').lerp(inkLight, fadeAmt).getHexString());
+        sticky.style.setProperty('--ink-muted', '#' + cur('--ink-muted').lerp(mutLight, fadeAmt).getHexString());
+        const btnOn = fadeAmt > 0.5;
+        sticky.style.setProperty('--btn-ink', btnOn ? '#14281a' : sticky.style.getPropertyValue('--btn-ink'));
+        sticky.style.setProperty('--accent', btnOn ? '#6fe39a' : sticky.style.getPropertyValue('--accent'));
+        const sc = sticky.style.getPropertyValue('--scrim').split(',').map((n) => parseFloat(n) || 0);
+        const mix = (v: number, to: number) => Math.round(v + (to - v) * fadeAmt);
+        sticky.style.setProperty('--scrim', `${mix(sc[0], 11)}, ${mix(sc[1], 20)}, ${mix(sc[2], 25)}`);
+      }
 
       renderer.render(scene, camera);
     }
@@ -856,6 +894,28 @@ export default function StoryScene() {
           {MACHINES.map((m) => (
             <div className="st-tag" key={m.name}><i />{m.name}<b>0,00 kW</b></div>
           ))}
+        </div>
+        <div className="st-hud" aria-hidden="true">
+          <div className="hud-clock">
+            <span className="hud-orb" data-d="day" />
+            <span>
+              <b className="hud-time">05.30</b>
+              <small className="hud-phase">Subuh</small>
+            </span>
+          </div>
+          <div className="hud-steps">
+            <div className="hud-line"><i className="hud-fill" /></div>
+            {HUD_MARKS.map((m) => (
+              <span className="hud-dot" key={m.t} style={{ left: `${m.at * 100}%` }}><em>{m.t}</em></span>
+            ))}
+          </div>
+          <div className="hud-mix">
+            <div className="hud-nums">
+              <span><i className="a" />PLN <b className="hud-pln">0,0</b> kW</span>
+              <span><i className="g" />Surya <b className="hud-pv">0,0</b> kW</span>
+            </div>
+            <div className="hud-bar"><i className="hud-bpv" /><i className="hud-bpln" /></div>
+          </div>
         </div>
         <div className="st-nogl" hidden>Browser Anda belum mendukung WebGL, sehingga demo 3D tidak dapat ditampilkan.</div>
 

@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import Reveal from '@/components/Reveal';
 import KiloAvatar from '@/components/KiloAvatar';
 import { useReducedMotion } from '@/components/hooks';
@@ -24,27 +25,33 @@ const FAQS = [
   },
 ];
 
-const DOTS_MS = 900;
-const WORD_MS = 36;
+const DOTS_MS = 800;
+const WORD_MS = 42;
 
-const clock = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(':', '.');
-
-type Turn = { q: number; at: string };
-
-/** Tiga titik "mengetik", lalu jawaban muncul kata demi kata. */
-function Answer({ text, reduced, onTick }: { text: string; reduced: boolean; onTick: () => void }) {
+/** Tiga titik "mengetik", lalu jawaban muncul kata demi kata. Jawaban yang sudah tampil penuh tidak diketik ulang. */
+function Answer({ text, open, reduced }: { text: string; open: boolean; reduced: boolean }) {
   const words = text.split(' ');
-  const [count, setCount] = useState(reduced ? words.length : 0);
+  const [count, setCount] = useState(0);
+  const done = useRef(false);
 
   useEffect(() => {
-    if (reduced) return;
+    if (!open) return;
+    if (done.current || reduced) {
+      done.current = true;
+      setCount(words.length);
+      return;
+    }
+    setCount(0);
     let k = 0;
     let iv: ReturnType<typeof setInterval> | undefined;
     const t = setTimeout(() => {
       iv = setInterval(() => {
         k++;
         setCount(k);
-        if (k >= words.length) clearInterval(iv);
+        if (k >= words.length) {
+          done.current = true;
+          clearInterval(iv);
+        }
       }, WORD_MS);
     }, DOTS_MS);
     return () => {
@@ -52,51 +59,42 @@ function Answer({ text, reduced, onTick }: { text: string; reduced: boolean; onT
       clearInterval(iv);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [text, reduced]);
+  }, [open, reduced, text]);
 
-  useEffect(onTick, [count, onTick]);
-
-  return count === 0 ? (
-    <span className="faq-dots" aria-label="Si Kilo sedang mengetik">
-      <i />
-      <i />
-      <i />
-    </span>
-  ) : (
+  return (
     <>
       <span className="sr-only">{text}</span>
-      <span aria-hidden="true">{words.slice(0, count).join(' ')}</span>
+      {count === 0 ? (
+        <span className="fq-dots" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+      ) : (
+        <span aria-hidden="true">{words.slice(0, count).join(' ')}</span>
+      )}
     </>
   );
 }
 
 export default function FaqChat() {
   const reduced = useReducedMotion();
-  const [thread, setThread] = useState<Turn[]>([]);
-  const phoneRef = useRef<HTMLDivElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const started = useRef(false);
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const touched = useRef(false);
 
-  const scrollDown = useCallback(() => {
-    const el = bodyRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, []);
-
-  const ask = useCallback((i: number) => {
-    setThread((t) => (t.some((x) => x.q === i) ? t : [...t, { q: i, at: clock() }]));
-  }, []);
-
-  // Pertanyaan pertama masuk sendiri begitu ponsel terlihat, supaya orang langsung paham ini apa.
+  // Pertanyaan pertama terbuka sendiri begitu bagian ini terlihat, supaya orang langsung paham ini apa.
   useEffect(() => {
-    const el = phoneRef.current;
+    const el = chatRef.current;
     if (!el) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting || started.current) return;
-        started.current = true;
+        if (!entry.isIntersecting) return;
         io.disconnect();
-        timer = setTimeout(() => ask(0), reduced ? 0 : 600);
+        timer = setTimeout(() => {
+          if (!touched.current) setOpenIdx(0);
+        }, reduced ? 0 : 500);
       },
       { threshold: 0.5 },
     );
@@ -105,73 +103,74 @@ export default function FaqChat() {
       io.disconnect();
       clearTimeout(timer);
     };
-  }, [ask, reduced]);
+  }, [reduced]);
 
-  useEffect(scrollDown, [thread.length, scrollDown]);
-
-  const left = FAQS.map((f, i) => ({ ...f, i })).filter((f) => !thread.some((t) => t.q === f.i));
+  const toggle = (i: number) => {
+    touched.current = true;
+    setOpenIdx((cur) => (cur === i ? null : i));
+  };
 
   return (
     <section id="faq" className="sheet-band faq-band" aria-labelledby="h-faq">
       <div className="sheet-w">
-        <div className="grid md:grid-cols-[1fr_minmax(0,25rem)] gap-12 md:gap-20 items-center">
-          <Reveal className="md:sticky md:top-24">
+        <div className="fq-wrap">
+          <Reveal className="fq-intro">
             <div className="sh-mark">
               <b>04</b>
               <span>FAQ</span>
             </div>
             <h2 id="h-faq" className="sh-title">
-              Tanya langsung Si Kilo
+              Pertanyaan yang sering muncul
             </h2>
             <p className="sh-lead mt-5" style={{ justifySelf: 'start' }}>
-              Pilih satu pertanyaan, lalu Si Kilo yang menjawab. Di produk yang sebenarnya, Si Kilo mengirim ringkasan harian dengan cara yang sama, lewat WhatsApp.
+              Pilih satu pertanyaan, lalu Si Kilo menjawab tepat di bawahnya. Belum ketemu jawabannya? Coba langsung di simulator.
             </p>
+            <a className="fq-link" href="#simulator-section">
+              Buka simulator <ArrowRight size={16} aria-hidden="true" />
+            </a>
           </Reveal>
 
           <Reveal delay={80}>
-            <div ref={phoneRef} className="wa" role="group" aria-label="Contoh percakapan dengan Si Kilo">
-              <div className="wa-head">
-                <span className="wa-av" aria-hidden="true"><KiloAvatar /></span>
-                <div>
-                  <b>Si Kilo</b>
-                  <small>asisten energi WASKITA · online</small>
+            <div ref={chatRef} className="fq" role="group" aria-label="Pertanyaan dan jawaban bersama Si Kilo">
+              {FAQS.map((f, i) => {
+                const open = openIdx === i;
+                return (
+                  <div key={f.q} className="fq-item">
+                    <button
+                      type="button"
+                      className="fq-q"
+                      aria-expanded={open}
+                      aria-controls={`fq-a-${i}`}
+                      id={`fq-q-${i}`}
+                      onClick={() => toggle(i)}
+                    >
+                      {f.q}
+                    </button>
+                    <div id={`fq-a-${i}`} role="region" aria-labelledby={`fq-q-${i}`} className={`fq-ans ${open ? 'open' : ''}`}>
+                      <div className="fq-ans-in">
+                        <div className="fq-msg">
+                          <span className="fq-av" aria-hidden="true">
+                            <KiloAvatar />
+                          </span>
+                          <p>
+                            <Answer text={f.a} open={open} reduced={reduced} />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className={`fq-ans fq-rest ${openIdx === null ? 'open' : ''}`} aria-hidden={openIdx !== null}>
+                <div className="fq-ans-in">
+                  <div className="fq-msg">
+                    <span className="fq-av" aria-hidden="true">
+                      <KiloAvatar />
+                    </span>
+                    <p>Pilih salah satu pertanyaan di atas, nanti saya jawab.</p>
+                  </div>
                 </div>
-              </div>
-
-              <div ref={bodyRef} className="wa-body" aria-live="polite">
-                <div className="wa-day">Hari ini</div>
-                {thread.length === 0 && <div className="wa-empty">Pilih pertanyaan di bawah untuk memulai.</div>}
-                {thread.map((t) => (
-                  <div key={t.q} className="wa-turn">
-                    <div className="wa-msg out">
-                      <p>{FAQS[t.q].q}</p>
-                      <time>{t.at} <span className="wa-tick">✓✓</span></time>
-                    </div>
-                    <div className="wa-msg in">
-                      <p><Answer text={FAQS[t.q].a} reduced={reduced} onTick={scrollDown} /></p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="wa-foot">
-                {left.length > 0 ? (
-                  <>
-                    <span className="wa-hint">Balasan cepat</span>
-                    <div className="wa-chips">
-                      {left.map((f) => (
-                        <button key={f.i} type="button" className="wa-chip" onClick={() => ask(f.i)}>
-                          {f.q}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="wa-done">
-                    <span>Semua pertanyaan sudah terjawab.</span>
-                    <button type="button" className="wa-chip" onClick={() => setThread([])}>Ulangi dari awal</button>
-                  </div>
-                )}
               </div>
             </div>
           </Reveal>
