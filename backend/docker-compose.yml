@@ -1,0 +1,48 @@
+# WASKITA — API + PostgreSQL
+#
+#   cp .env.example .env      # lalu isi SECRET_KEY, POSTGRES_PASSWORD, dll.
+#   docker compose up --build
+#
+# API: http://localhost:8000  (dokumentasi: /docs)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-waskita}
+      POSTGRES_USER: ${POSTGRES_USER:-waskita}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Isi POSTGRES_PASSWORD di .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    # Nilai di bawah menimpa .env. ENVIRONMENT diambil dari .env bila ada
+    # (set ENVIRONMENT=production untuk deploy sungguhan).
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-waskita}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-waskita}
+      SECRET_KEY: ${SECRET_KEY:?Isi SECRET_KEY di .env}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Model terlatih (NILM, PPO) dan cache cuaca disimpan di luar image.
+      - ./models:/app/models
+      - apidata:/app/data
+
+volumes:
+  pgdata:
+  apidata:

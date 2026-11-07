@@ -1,0 +1,11 @@
+{
+  "obs_version": 2,
+  "obs_dim": 64,
+  "n_max_machines": 6,
+  "algorithm": "MaskablePPO (sb3-contrib)",
+  "chosen": "bc+ppo",
+  "trained_at": "2026-11-07T11:30:52+00:00",
+  "timesteps": 30000,
+  "bc_episodes": 150,
+  "seed": 0
+}

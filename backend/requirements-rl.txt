@@ -1,0 +1,6 @@
+# Dependensi tambahan untuk MELATIH agen PPO (menarik PyTorch, ~200 MB).
+# Server API tetap jalan tanpa ini (memakai OR-Tools sebagai penjadwal).
+#   pip install -r requirements.txt -r requirements-rl.txt
+gymnasium>=0.29.1
+stable-baselines3>=2.3.0
+sb3-contrib>=2.3.0

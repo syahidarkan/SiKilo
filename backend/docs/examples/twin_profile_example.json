@@ -1,0 +1,40 @@
+{
+  "name": "Contoh konveksi kecil Sukoharjo (SINTETIS)",
+  "latitude": -7.68,
+  "longitude": 110.83,
+  "pv_kwp": 0.0,
+  "battery_kwh": 0.0,
+  "baseload_w": 120.0,
+  "work_hours_load_w": 250.0,
+  "work_start_hour": 7,
+  "work_end_hour": 17,
+  "ppj_pct": 0.0,
+  "connected_power_va": 3500,
+  "orders_csv": "orders_history_example.csv",
+  "machines": [
+    {
+      "machine_id": "jahit-01",
+      "label": "Mesin Jahit (4 unit)",
+      "power_w": 1000.0,
+      "daily_runtime_minutes": 420,
+      "habit_start_hour": 8,
+      "duty_cycle": 0.6
+    },
+    {
+      "machine_id": "setrika-01",
+      "label": "Setrika Uap",
+      "power_w": 1200.0,
+      "daily_runtime_minutes": 240,
+      "habit_start_hour": 9,
+      "duty_cycle": 0.55
+    },
+    {
+      "machine_id": "kompresor-01",
+      "label": "Kompresor Sablon",
+      "power_w": 750.0,
+      "daily_runtime_minutes": 120,
+      "habit_start_hour": 13,
+      "duty_cycle": 0.7
+    }
+  ]
+}

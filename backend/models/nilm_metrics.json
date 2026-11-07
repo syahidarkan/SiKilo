@@ -1,0 +1,162 @@
+{
+  "data_source": "synthetic",
+  "validation_status": "belum divalidasi — data sintetis, bukan bukti akurasi di lapangan",
+  "generated_at": "2026-11-07T18:03:46",
+  "target": {
+    "metric": "F1 & estimated accuracy energi per mesin",
+    "threshold": 0.8
+  },
+  "inputs": {
+    "panel": "test_panel.csv",
+    "plugs": "test_plugs.csv",
+    "n_samples": 172800,
+    "n_days": 2,
+    "first_day": "2026-10-14",
+    "last_day": "2026-10-15",
+    "label_tolerance_s": 5.0,
+    "units_per_label": 0
+  },
+  "classifier": {
+    "source": "lgbm",
+    "fallback_reason": null,
+    "model_data_source": "synthetic",
+    "model_trained_at": "2026-11-07T17:54:51",
+    "model_n_events": 1305
+  },
+  "metric_definitions": {
+    "energy_estimated_accuracy": "1 - sum_t|e_hat-e| / (2 sum_t e), per jam (Kolter & Johnson 2011)",
+    "event_accuracy": "porsi event terdeteksi yang labelnya benar (termasuk kelas latar)",
+    "detection_recall": "porsi transisi smart plug yang punya event panel pasangan"
+  },
+  "per_appliance": {
+    "Kompresor Pendingin Freezer": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 167,
+      "detection_recall": 0.9824,
+      "n_plug_transitions": 170,
+      "energy_true_kwh": 3.6141,
+      "energy_est_kwh": 3.6631,
+      "energy_estimated_accuracy": 0.9695,
+      "meets_80pct_f1": true,
+      "meets_80pct_energy": true
+    },
+    "Kompresor Udara Sablon": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 142,
+      "detection_recall": 0.9595,
+      "n_plug_transitions": 148,
+      "energy_true_kwh": 3.0332,
+      "energy_est_kwh": 2.6645,
+      "energy_estimated_accuracy": 0.9286,
+      "meets_80pct_f1": true,
+      "meets_80pct_energy": true
+    },
+    "Motor Drum Pengering Laundry": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 15,
+      "detection_recall": 0.9375,
+      "n_plug_transitions": 16,
+      "energy_true_kwh": 4.847,
+      "energy_est_kwh": 4.8017,
+      "energy_estimated_accuracy": 0.9841,
+      "meets_80pct_f1": true,
+      "meets_80pct_energy": true
+    },
+    "Motor Jahit Induksi": {
+      "precision": 0.9697,
+      "recall": 1.0,
+      "f1": 0.9846,
+      "support": 64,
+      "detection_recall": 0.9697,
+      "n_plug_transitions": 66,
+      "energy_true_kwh": 4.3223,
+      "energy_est_kwh": 4.2077,
+      "energy_estimated_accuracy": 0.967,
+      "meets_80pct_f1": true,
+      "meets_80pct_energy": true
+    },
+    "Setrika Pemanas Uap": {
+      "precision": 1.0,
+      "recall": 0.9926,
+      "f1": 0.9963,
+      "support": 271,
+      "detection_recall": 0.9819,
+      "n_plug_transitions": 276,
+      "energy_true_kwh": 3.5543,
+      "energy_est_kwh": 3.4209,
+      "energy_estimated_accuracy": 0.9722,
+      "meets_80pct_f1": true,
+      "meets_80pct_energy": true
+    },
+    "Baseload / Background": {
+      "precision": 0.9661,
+      "recall": 0.9661,
+      "f1": 0.9661,
+      "support": 59,
+      "ground_truth": "derived (total panel − Σ smart plug)",
+      "energy_true_kwh": 13.133,
+      "energy_est_kwh": 13.7461,
+      "energy_estimated_accuracy": 0.9745
+    }
+  },
+  "overall": {
+    "n_events": 718,
+    "n_plug_transitions": 676,
+    "event_accuracy": 0.9944,
+    "macro_f1_appliances": 0.9962,
+    "detection_recall": 0.9749,
+    "energy_estimated_accuracy": 0.9667,
+    "energy_conservation_error_pct": 0.0,
+    "n_appliances_meeting_80pct_f1": 5,
+    "n_appliances_meeting_80pct_energy": 5,
+    "n_appliances": 5
+  },
+  "baselines": {
+    "heuristic": {
+      "overall": {
+        "n_events": 718,
+        "n_plug_transitions": 676,
+        "event_accuracy": 0.9986,
+        "macro_f1_appliances": 0.9928,
+        "detection_recall": 0.9749,
+        "energy_estimated_accuracy": 0.9588,
+        "energy_conservation_error_pct": 0.0,
+        "n_appliances_meeting_80pct_f1": 5,
+        "n_appliances_meeting_80pct_energy": 5,
+        "n_appliances": 5
+      },
+      "per_appliance": {
+        "Kompresor Pendingin Freezer": {
+          "f1": 1.0,
+          "energy_estimated_accuracy": 0.9676
+        },
+        "Kompresor Udara Sablon": {
+          "f1": 0.9965,
+          "energy_estimated_accuracy": 0.9234
+        },
+        "Motor Drum Pengering Laundry": {
+          "f1": 0.9677,
+          "energy_estimated_accuracy": 0.9655
+        },
+        "Motor Jahit Induksi": {
+          "f1": 1.0,
+          "energy_estimated_accuracy": 0.9599
+        },
+        "Setrika Pemanas Uap": {
+          "f1": 1.0,
+          "energy_estimated_accuracy": 0.9696
+        },
+        "Baseload / Background": {
+          "f1": 1.0,
+          "energy_estimated_accuracy": 0.9751
+        }
+      }
+    }
+  }
+}

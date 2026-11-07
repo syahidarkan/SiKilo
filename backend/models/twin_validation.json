@@ -1,0 +1,168 @@
+{
+  "profile": "Contoh konveksi kecil Sukoharjo (SINTETIS)",
+  "target_bill_error_pct": 10.0,
+  "meter": {
+    "n_days": 14,
+    "real_kwh": 171.49,
+    "sim_kwh": 164.7,
+    "real_cost_idr": 247748,
+    "sim_cost_idr": 237942,
+    "energy_error_pct": 3.96,
+    "cost_error_pct": 3.96,
+    "daily_mape_pct": 7.09,
+    "daily": [
+      {
+        "day": "2025-10-06",
+        "real_kwh": 15.629,
+        "sim_kwh": 12.674,
+        "error_pct": 18.91
+      },
+      {
+        "day": "2025-10-07",
+        "real_kwh": 13.523,
+        "sim_kwh": 13.27,
+        "error_pct": 1.87
+      },
+      {
+        "day": "2025-10-08",
+        "real_kwh": 14.575,
+        "sim_kwh": 13.27,
+        "error_pct": 8.96
+      },
+      {
+        "day": "2025-10-09",
+        "real_kwh": 16.108,
+        "sim_kwh": 13.27,
+        "error_pct": 17.62
+      },
+      {
+        "day": "2025-10-10",
+        "real_kwh": 11.778,
+        "sim_kwh": 11.894,
+        "error_pct": 0.99
+      },
+      {
+        "day": "2025-10-11",
+        "real_kwh": 14.632,
+        "sim_kwh": 15.093,
+        "error_pct": 3.15
+      },
+      {
+        "day": "2025-10-12",
+        "real_kwh": 3.319,
+        "sim_kwh": 2.88,
+        "error_pct": 13.22
+      },
+      {
+        "day": "2025-10-13",
+        "real_kwh": 12.35,
+        "sim_kwh": 12.674,
+        "error_pct": 2.62
+      },
+      {
+        "day": "2025-10-14",
+        "real_kwh": 12.935,
+        "sim_kwh": 13.27,
+        "error_pct": 2.59
+      },
+      {
+        "day": "2025-10-15",
+        "real_kwh": 13.217,
+        "sim_kwh": 13.27,
+        "error_pct": 0.4
+      },
+      {
+        "day": "2025-10-16",
+        "real_kwh": 14.355,
+        "sim_kwh": 13.27,
+        "error_pct": 7.56
+      },
+      {
+        "day": "2025-10-17",
+        "real_kwh": 11.545,
+        "sim_kwh": 11.894,
+        "error_pct": 3.02
+      },
+      {
+        "day": "2025-10-18",
+        "real_kwh": 14.239,
+        "sim_kwh": 15.093,
+        "error_pct": 6.0
+      },
+      {
+        "day": "2025-10-19",
+        "real_kwh": 3.283,
+        "sim_kwh": 2.88,
+        "error_pct": 12.29
+      }
+    ]
+  },
+  "pln_bill": {
+    "n_months": 6,
+    "real_rp": 3256354,
+    "sim_rp": 3127673,
+    "bill_error_pct": 3.95,
+    "energy_error_pct": 3.95,
+    "max_monthly_bill_error_pct": 4.82,
+    "months_within_target": "6/6",
+    "months": [
+      {
+        "bulan": "2025-04",
+        "real_kwh": 317.0,
+        "sim_kwh": 303.5,
+        "real_rp": 457970,
+        "sim_rp": 438530,
+        "bill_error_pct": 4.24
+      },
+      {
+        "bulan": "2025-05",
+        "real_kwh": 388.0,
+        "sim_kwh": 369.7,
+        "real_rp": 560544,
+        "sim_rp": 534042,
+        "bill_error_pct": 4.73
+      },
+      {
+        "bulan": "2025-06",
+        "real_kwh": 392.0,
+        "sim_kwh": 380.5,
+        "real_rp": 566322,
+        "sim_rp": 549730,
+        "bill_error_pct": 2.93
+      },
+      {
+        "bulan": "2025-07",
+        "real_kwh": 413.0,
+        "sim_kwh": 394.9,
+        "real_rp": 596661,
+        "sim_rp": 570498,
+        "bill_error_pct": 4.38
+      },
+      {
+        "bulan": "2025-08",
+        "real_kwh": 366.0,
+        "sim_kwh": 356.5,
+        "real_rp": 528760,
+        "sim_rp": 515088,
+        "bill_error_pct": 2.59
+      },
+      {
+        "bulan": "2025-09",
+        "real_kwh": 378.0,
+        "sim_kwh": 359.8,
+        "real_rp": 546097,
+        "sim_rp": 519785,
+        "bill_error_pct": 4.82
+      }
+    ]
+  },
+  "bill_error_pct": 3.95,
+  "energy_error_pct": 3.96,
+  "n_days": 197,
+  "source": "example",
+  "generated_at": "2026-11-07T10:55:17+00:00",
+  "target_met": true,
+  "solar_source": null,
+  "orders_source": "csv",
+  "catatan": "Data CONTOH SINTETIS — angka ini hanya menguji pipeline, BELUM divalidasi dengan data lapangan UMKM."
+}

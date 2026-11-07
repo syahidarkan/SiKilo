@@ -1,0 +1,7 @@
+{
+  "name": "waskita_core",
+  "version": "0.1.0",
+  "description": "Inti perhitungan daya (Vrms, Irms, P, Q, PF, frekuensi), ring buffer sampel, dan format JSON telemetri WASKITA. Tidak bergantung pada Arduino sehingga bisa diuji di PC (env:native).",
+  "frameworks": "*",
+  "platforms": "*"
+}

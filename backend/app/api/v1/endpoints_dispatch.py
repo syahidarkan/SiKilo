@@ -1,146 +1,174 @@
-from fastapi import APIRouter, HTTPException, status
+"""
+Endpoint penjadwal mesin WASKITA (tahap "Atur").
+
+- ``POST /dispatch/optimize`` (butuh login): jadwal per mesin untuk satu hari
+  + perbandingan dengan kebiasaan lama pemilik pada PV & baterai yang sama.
+- ``GET  /dispatch/default-jobs``: contoh daftar mesin (asumsi demo).
+"""
+from __future__ import annotations
+
 from datetime import date
+
 import numpy as np
-from app.schemas.dispatch import DispatchRequest, DispatchResponse, SlotSchedule, MachineJob
-from app.digital_twin.solar_engine import get_solar_engine
-from app.digital_twin.factory_model import UMKMDigitalTwin, FlexibleMachine
-from app.agent.umkm_env import UMKMDispatchEnv
-from app.agent.ppo_scheduler import get_ppo_scheduler
-from app.agent.ortools_baseline import solve_milp_schedule
+from fastapi import APIRouter, Depends, HTTPException, status
+from starlette.concurrency import run_in_threadpool
+
+from app.agent.planner import PlanResult, default_jobs, plan_day
+from app.core.auth import get_current_user
 from app.core.config import settings
+from app.core.tariff import SLOT_HOURS
+from app.digital_twin.battery import Battery
+from app.digital_twin.factory_model import schedule_blocks, slot_label
+from app.models import User
+from app.schemas.dispatch import (
+    DefaultJobsResponse,
+    DispatchRequest,
+    DispatchResponse,
+    MachinePlan,
+    SavingsBreakdown,
+    SlotSchedule,
+    TimeBlock,
+)
 
 router = APIRouter(prefix="/dispatch", tags=["Dispatch"])
 
-N_SLOTS = 96
-TARIFF_PEAK = settings.pln_tariff_peak_idr / 1000.0
-TARIFF_OFFPEAK = settings.pln_tariff_offpeak_idr / 1000.0
-BASELOAD_W = 800.0
+
+def _blocks(column: np.ndarray) -> list[TimeBlock]:
+    return [TimeBlock(start=slot_label(s), end=slot_label(e), slots=e - s) for s, e in schedule_blocks(column)]
 
 
-def _make_twin(jobs: list[MachineJob]) -> UMKMDigitalTwin:
-    machines = [
-        FlexibleMachine(
-            machine_id=j.machine_id,
-            appliance_class=j.appliance_class,
-            label=j.label,
-            power_w=j.power_w,
-            daily_runtime_slots=max(1, j.daily_runtime_minutes // 15),
-            deadline_slot=j.deadline_hour * 4,
-        )
-        for j in jobs
-        if j.is_flexible
-    ]
-    return UMKMDigitalTwin(machines=machines)
-
-
-def _build_schedule_response(
-    schedule: np.ndarray,
-    infos: list[dict],
-    twin: UMKMDigitalTwin,
-    pv_curve_w: np.ndarray,
-    target_date: date,
-    solver_used: str,
-) -> DispatchResponse:
+def plan_to_response(plan: PlanResult, target_date: date) -> DispatchResponse:
+    """Ubah ``PlanResult`` menjadi respons API (dipakai juga oleh modul lain)."""
+    ids = plan.machine_ids
+    tariff = plan.tariff_idr_per_wh if plan.tariff_idr_per_wh is not None else np.zeros(len(plan.load_w))
     slots: list[SlotSchedule] = []
-    total_grid_wh = 0.0
-    total_pv_wh = 0.0
-    total_cost_idr = 0.0
-    total_curtail_wh = 0.0
+    for t in range(plan.schedule.shape[0]):
+        on = [ids[i] for i in np.flatnonzero(plan.schedule[t])]
+        grid_w = float(plan.grid_w[t])
+        slots.append(
+            SlotSchedule(
+                slot_index=t,
+                time_label=slot_label(t),
+                machines_on=on,
+                machine_id=on[0] if on else "baseload",
+                state=1 if on else 0,
+                p_load_w=round(float(plan.load_w[t]), 1),
+                p_pv_w=round(float(plan.pv_w[t]), 1),
+                p_grid_w=round(grid_w, 1),
+                p_curtail_w=round(float(plan.curtail_w[t]), 1),
+                battery_soc_wh=None if plan.battery_soc_wh is None else round(float(plan.battery_soc_wh[t]), 1),
+                baseline_load_w=round(float(plan.baseline_load_w[t]), 1),
+                tariff_idr_per_kwh=round(float(tariff[t]) * 1000.0, 2),
+                cost_idr=round(grid_w * SLOT_HOURS * float(tariff[t]), 2),
+            )
+        )
 
-    for t in range(N_SLOTS):
-        hour = t // 4
-        minute = (t % 4) * 15
-        time_label = f"{hour:02d}:{minute:02d}"
-        tariff = TARIFF_PEAK if 8 <= hour < 22 else TARIFF_OFFPEAK
-        pv_w = float(pv_curve_w[t])
-
-        # Total load di slot ini
-        p_machines_w = sum(
-            twin.machines[i].power_w * int(schedule[t, i])
-            for i in range(len(twin.machines))
-        ) if schedule.shape[1] > 0 else 0.0
-        p_total_w = p_machines_w + BASELOAD_W
-
-        grid_w = max(0.0, p_total_w - pv_w)
-        curtail_w = max(0.0, pv_w - p_total_w)
-        cost_slot = grid_w * 0.25 * tariff
-
-        total_grid_wh += grid_w * 0.25
-        total_pv_wh += min(pv_w, p_total_w) * 0.25
-        total_cost_idr += cost_slot
-        total_curtail_wh += curtail_w * 0.25
-
-        # Ambil mesin pertama yang ON di slot ini untuk label (simplified)
-        machine_id_on = "baseload"
-        for i, m in enumerate(twin.machines):
-            if schedule.shape[1] > i and schedule[t, i] == 1:
-                machine_id_on = m.machine_id
-                break
-
-        slots.append(SlotSchedule(
-            slot_index=t,
-            time_label=time_label,
-            machine_id=machine_id_on,
-            state=1 if p_machines_w > 0 else 0,
-            p_load_w=p_total_w,
-            p_pv_w=pv_w,
-            p_grid_w=grid_w,
-            cost_idr=cost_slot,
-        ))
-
-    # Baseline: semua mesin dinyalakan dari jam 08:00 tanpa optimasi
-    baseline_cost = sum(
-        (sum(m.power_w for m in twin.machines) + BASELOAD_W)
-        * (TARIFF_PEAK if 8 <= (t // 4) < 22 else TARIFF_OFFPEAK)
-        * 0.25
-        for t in range(N_SLOTS)
-    )
-
-    savings = max(0.0, baseline_cost - total_cost_idr)
-    savings_pct = (savings / baseline_cost * 100) if baseline_cost > 0 else 0.0
+    habit = plan.baseline_schedule
+    machine_ok = {m.machine_id: True for m in plan.machines}
+    for v in plan.violations:
+        mid = v.split(":", 1)[0]
+        if mid in machine_ok:
+            machine_ok[mid] = False
+    machines: list[MachinePlan] = []
+    for i, m in enumerate(plan.machines):
+        col = plan.schedule[:, i]
+        machines.append(
+            MachinePlan(
+                machine_id=m.machine_id,
+                label=m.label,
+                power_w=m.power_w,
+                is_flexible=m.is_flexible,
+                runtime_minutes=m.daily_runtime_slots * 15,
+                scheduled_minutes=int(col.sum()) * 15,
+                window=f"{slot_label(m.job_earliest_slot)}–{slot_label(m.job_deadline_slot)}",
+                blocks=_blocks(col),
+                habit_blocks=_blocks(habit[:, i]) if habit is not None else [],
+                idle_minutes_habit=m.idle_slots_habit * 15,
+                deadline_met=machine_ok.get(m.machine_id, True),
+                on_slots=[int(t) for t in np.flatnonzero(col)],
+            )
+        )
 
     return DispatchResponse(
         target_date=target_date,
         schedule=slots,
-        total_grid_kwh=round(total_grid_wh / 1000.0, 3),
-        total_pv_kwh=round(total_pv_wh / 1000.0, 3),
-        total_cost_idr=round(total_cost_idr, 0),
-        baseline_cost_idr=round(baseline_cost, 0),
-        savings_idr=round(savings, 0),
-        savings_pct=round(savings_pct, 1),
-        solver_used=solver_used,
-        curtailment_kwh=round(total_curtail_wh / 1000.0, 3),
+        total_grid_kwh=round(plan.grid_kwh, 3),
+        total_pv_kwh=round(plan.pv_used_kwh, 3),
+        total_cost_idr=round(plan.cost_idr, 0),
+        baseline_cost_idr=round(plan.baseline_cost_idr, 0),
+        savings_idr=round(plan.savings_idr, 0),
+        savings_pct=round(plan.savings_pct, 1),
+        solver_used=plan.solver_used,
+        curtailment_kwh=round(plan.curtail_kwh, 3),
+        deadlines_met=plan.deadlines_met,
+        pv_source=plan.pv_source,
+        pv_generated_kwh=round(float(np.sum(plan.pv_w)) * SLOT_HOURS / 1000.0, 3),
+        baseline_grid_kwh=round(plan.baseline_grid_kwh, 3),
+        machines=machines,
+        savings_breakdown=SavingsBreakdown(
+            idle_idr=round(plan.idle_savings_idr, 0),
+            shifting_idr=round(plan.shifting_savings_idr, 0),
+        ),
+        tariff_scheme=settings.tariff_scheme,
+        notes=plan.notes,
+    )
+
+
+@router.get("/default-jobs", response_model=DefaultJobsResponse)
+async def get_default_jobs() -> DefaultJobsResponse:
+    """Contoh daftar mesin UMKM untuk dicoba di ``/dispatch/optimize``."""
+    return DefaultJobsResponse(
+        jobs=default_jobs(),
+        baseload_w=settings.default_baseload_w,
+        work_start_hour=settings.work_start_hour,
+        work_end_hour=settings.work_end_hour,
+        default_habit_start_hour=settings.default_habit_start_hour,
+        note=(
+            "Contoh mesin konveksi/sablon/laundry. Daya, runtime, dan menit idle adalah ASUMSI demo — "
+            "ganti dengan data mesin Anda (atau hasil NILM) agar perhitungan bermakna."
+        ),
     )
 
 
 @router.post("/optimize", response_model=DispatchResponse)
-async def optimize_dispatch(request: DispatchRequest) -> DispatchResponse:
+async def optimize_dispatch(
+    request: DispatchRequest,
+    user: User = Depends(get_current_user),
+) -> DispatchResponse:
     """
-    Jalankan optimasi jadwal mesin untuk satu hari.
-    Gunakan RL agent (PPO) atau OR-Tools MILP sebagai baseline.
+    Susun jadwal mesin satu hari lalu bandingkan dengan kebiasaan lama.
+
+    Penghematan = biaya kebiasaan lama − biaya jadwal agen, keduanya memakai
+    PLTS, baterai, dan tarif yang sama; nilainya bisa negatif.
     """
-    solar = get_solar_engine()
-    twin = _make_twin(request.jobs)
+    jobs = list(request.jobs) or default_jobs()
+    if request.apply_order_book:
+        from app.digital_twin.orders import OrderBook
 
-    if not twin.machines:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tidak ada mesin fleksibel dalam permintaan",
+        jobs = OrderBook().jobs_for(request.target_date, jobs)
+
+    solver = request.solver
+    if request.use_rl_agent is not None and request.solver == "auto":
+        solver = "auto" if request.use_rl_agent else "ortools"
+
+    battery = Battery.from_kwh(request.battery_kwh) if request.battery_kwh > 0 else None
+    try:
+        plan = await run_in_threadpool(
+            plan_day,
+            jobs,
+            request.target_date,
+            kwp=request.kwp_capacity,
+            baseload_w=request.baseload_w,
+            battery=battery,
+            solver=solver,
+            lat=request.latitude,
+            lon=request.longitude,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    response = plan_to_response(plan, request.target_date)
+    if request.apply_order_book:
+        from app.digital_twin.orders import OrderBook
 
-    pv_curve_w = solar.simulate_day(request.target_date, request.kwp_capacity)
-
-    if request.use_rl_agent:
-        env = UMKMDispatchEnv(twin=twin, solar=solar, kwp=request.kwp_capacity, target_date=request.target_date)
-        scheduler = get_ppo_scheduler()
-        schedule, infos = scheduler.run_episode(env)
-        solver_used = "PPO-RL" if scheduler._model is not None else "Greedy-Solar"
-    else:
-        schedule, _, status_str = solve_milp_schedule(
-            twin=twin, target_date=request.target_date, kwp=request.kwp_capacity
-        )
-        infos = []
-        solver_used = f"OR-Tools-{status_str}"
-
-    twin.reset()
-    return _build_schedule_response(schedule, infos, twin, pv_curve_w, request.target_date, solver_used)
+        response.notes.insert(0, "Pola pesanan: " + OrderBook().explain(request.target_date))
+    return response

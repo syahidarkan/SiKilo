@@ -10,3 +10,8 @@ build/
 *.sqlite3
 models/*.joblib
 models/*.pkl
+data/*.db
+data/*.db-*
+models/*.zip
+.pytest_cache/
+data/synthetic/

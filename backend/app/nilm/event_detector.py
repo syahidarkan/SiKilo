@@ -1,8 +1,30 @@
-from dataclasses import dataclass, field
+"""
+Detektor event transien (ON/OFF) dari telemetri panel.
+
+Cara kerja (mesin keadaan dua status):
+
+1. STABIL   – menyimpan W sampel terakhir (W = window_s × sample_rate). Baseline
+              = median P/Q jendela itu. Bila sampel baru menyimpang ≥ threshold
+              dari baseline, baseline "sebelum" dibekukan dan masuk TRANSIEN.
+2. TRANSIEN – mengumpulkan sampel (termasuk lonjakan inrush) sampai W sampel
+              terakhir kembali stabil. ΔP = median(sesudah) − baseline(sebelum).
+              Satu event dikeluarkan bila |ΔP| ≥ threshold. Lonjakan sesaat yang
+              kembali ke level semula tidak menghasilkan event.
+
+Dengan begitu ΔP diukur dari baseline stabil sebelum vs sesudah (bukan beda
+sampel berturut-turut), ramp 2–3 sampel tetap terukur penuh, dan inrush motor
+tidak menghasilkan event ganda.
+"""
+from __future__ import annotations
+
 from collections import deque
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
+
 import numpy as np
+
+from app.core.config import settings
 
 
 @dataclass
@@ -17,7 +39,7 @@ class TelemetrySample:
 
 @dataclass
 class TransientEvent:
-    timestamp: datetime
+    timestamp: datetime          # awal transien (onset)
     delta_p: float
     delta_q: float
     p_before: float
@@ -26,89 +48,111 @@ class TransientEvent:
     q_after: float
     v_rms: float
     i_rms: float
-    inrush_peak_ratio: float
-    event_type: str  # "ON" | "OFF"
+    inrush_peak_ratio: float     # (P puncak − P sebelum) / ΔP, ≥ 1; = 1 untuk OFF
+    event_type: str              # "ON" | "OFF"
+    transient_duration_s: float = 0.0  # lama dari onset sampai sinyal stabil lagi
 
 
 class EventDetector:
-    """
-    CUSUM-style transient event detector.
-    Fires when |ΔP| >= threshold within a 3-second rolling window.
-    """
-
     def __init__(
         self,
-        threshold_w: float = 50.0,
-        window_seconds: int = 3,
+        threshold_w: float | None = None,
+        window_seconds: int | None = None,
         sample_rate_hz: float = 1.0,
+        max_transient_s: int | None = None,
+        rel_stable_tol: float = 0.015,
     ) -> None:
-        self.threshold_w = threshold_w
-        self.window_size = int(window_seconds * sample_rate_hz)
-        self._buffer: deque[TelemetrySample] = deque(maxlen=self.window_size * 2)
-        self._last_stable_p: Optional[float] = None
-        self._last_stable_q: Optional[float] = None
-        self._cooldown_ticks: int = 0
-        self._cooldown_duration: int = max(3, self.window_size)
+        self.threshold_w = float(threshold_w if threshold_w is not None else settings.nilm_event_threshold_w)
+        window_s = window_seconds if window_seconds is not None else settings.nilm_event_window_s
+        max_tr_s = max_transient_s if max_transient_s is not None else settings.nilm_event_max_transient_s
+        self.sample_rate_hz = sample_rate_hz
+        self.window_size = max(2, int(round(window_s * sample_rate_hz)))
+        self.max_transient_samples = max(self.window_size + 1, int(round(max_tr_s * sample_rate_hz)))
+        self.rel_stable_tol = rel_stable_tol
 
+        self._steady: deque[TelemetrySample] = deque(maxlen=self.window_size)
+        self._transient: list[TelemetrySample] = []
+        self._p_before: float = 0.0
+        self._q_before: float = 0.0
+
+    # ── util ────────────────────────────────────────────────────────────────
+    def _stable_tol(self, level: float) -> float:
+        return max(self.threshold_w, self.rel_stable_tol * abs(level))
+
+    def _is_stable(self, samples: list[TelemetrySample]) -> bool:
+        p = np.fromiter((s.p_active for s in samples), dtype=np.float64, count=len(samples))
+        med = float(np.median(p))
+        return bool(np.max(np.abs(p - med)) <= self._stable_tol(med))
+
+    @staticmethod
+    def _median(samples, attr: str) -> float:
+        return float(np.median([getattr(s, attr) for s in samples]))
+
+    @property
+    def in_transient(self) -> bool:
+        return bool(self._transient)
+
+    def reset(self) -> None:
+        self._steady.clear()
+        self._transient = []
+
+    # ── API ─────────────────────────────────────────────────────────────────
     def push(self, sample: TelemetrySample) -> Optional[TransientEvent]:
-        self._buffer.append(sample)
-
-        if self._cooldown_ticks > 0:
-            self._cooldown_ticks -= 1
+        if not self._transient:
+            if len(self._steady) < self.window_size:
+                self._steady.append(sample)
+                return None
+            base_p = self._median(self._steady, "p_active")
+            if abs(sample.p_active - base_p) < self.threshold_w:
+                self._steady.append(sample)
+                return None
+            # Mulai transien: bekukan baseline sebelum.
+            self._p_before = base_p
+            self._q_before = self._median(self._steady, "q_reactive")
+            self._transient = [sample]
             return None
 
-        if len(self._buffer) < 2:
-            self._last_stable_p = sample.p_active
-            self._last_stable_q = sample.q_reactive
+        self._transient.append(sample)
+        tail = self._transient[-self.window_size:]
+        stable = len(self._transient) >= self.window_size and self._is_stable(tail)
+        forced = len(self._transient) >= self.max_transient_samples
+        if not (stable or forced):
             return None
+        return self._close_transient(tail)
 
-        prev = list(self._buffer)[-2]
-        delta_p = sample.p_active - prev.p_active
-        delta_q = sample.q_reactive - prev.q_reactive
+    def _close_transient(self, tail: list[TelemetrySample]) -> Optional[TransientEvent]:
+        samples = self._transient
+        self._transient = []
+        self._steady.clear()
+        self._steady.extend(tail)
 
+        p_after = self._median(tail, "p_active")
+        q_after = self._median(tail, "q_reactive")
+        delta_p = p_after - self._p_before
+        delta_q = q_after - self._q_before
         if abs(delta_p) < self.threshold_w:
-            # Update stable baseline with exponential moving average
-            alpha = 0.1
-            if self._last_stable_p is None:
-                self._last_stable_p = sample.p_active
-                self._last_stable_q = sample.q_reactive
-            else:
-                self._last_stable_p = (1 - alpha) * self._last_stable_p + alpha * sample.p_active
-                self._last_stable_q = (1 - alpha) * self._last_stable_q + alpha * sample.q_reactive
-            return None
+            return None  # lonjakan sesaat / noise, level kembali ke semula
 
-        # Confirm event using window average to filter noise
-        window = list(self._buffer)
-        recent_window = window[-self.window_size :]
-        p_values = [s.p_active for s in recent_window]
-        window_delta = max(p_values) - min(p_values)
+        event_type = "ON" if delta_p > 0 else "OFF"
+        if event_type == "ON":
+            peak = max(s.p_active for s in samples)
+            inrush = max(1.0, (peak - self._p_before) / delta_p)
+        else:
+            inrush = 1.0
 
-        if window_delta < self.threshold_w:
-            return None
-
-        inrush_peak = max(p_values)
-        mean_p = np.mean(p_values)
-        inrush_ratio = inrush_peak / mean_p if mean_p > 1.0 else 1.0
-
-        p_before = self._last_stable_p if self._last_stable_p is not None else prev.p_active
-        q_before = self._last_stable_q if self._last_stable_q is not None else prev.q_reactive
-
-        event = TransientEvent(
-            timestamp=sample.timestamp,
-            delta_p=delta_p,
-            delta_q=delta_q,
-            p_before=p_before,
-            q_before=q_before,
-            p_after=sample.p_active,
-            q_after=sample.q_reactive,
-            v_rms=sample.v_rms,
-            i_rms=sample.i_rms,
-            inrush_peak_ratio=float(inrush_ratio),
-            event_type="ON" if delta_p > 0 else "OFF",
+        n_settle = max(0, len(samples) - len(tail))
+        last = samples[-1]
+        return TransientEvent(
+            timestamp=samples[0].timestamp,
+            delta_p=float(delta_p),
+            delta_q=float(delta_q),
+            p_before=float(self._p_before),
+            q_before=float(self._q_before),
+            p_after=float(p_after),
+            q_after=float(q_after),
+            v_rms=float(last.v_rms),
+            i_rms=float(last.i_rms),
+            inrush_peak_ratio=float(inrush),
+            event_type=event_type,
+            transient_duration_s=float(n_settle / self.sample_rate_hz),
         )
-
-        self._cooldown_ticks = self._cooldown_duration
-        self._last_stable_p = sample.p_active
-        self._last_stable_q = sample.q_reactive
-
-        return event
