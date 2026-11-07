@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Sun, Zap, ClipboardList, Check, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import Reveal from '@/components/Reveal';
+import SectionHead from '@/components/SectionHead';
 import KiloAvatar from '@/components/KiloAvatar';
 import { useCountUp, useGaze, useReducedMotion } from '@/components/hooks';
 import { fetchEstimate, type Estimate, type MachineKey } from '@/lib/waskita';
@@ -56,41 +57,24 @@ type Result = {
   estimate?: Estimate;
 };
 
-function Metric({
-  label, sub, badge, icon, accent, bg, value, format, reduced,
+function Num({
+  label, sub, badge, accent, value, format, reduced,
 }: {
-  label: string; sub?: string; badge?: string; icon: React.ReactNode; accent: string; bg: string;
+  label: string; sub?: string; badge?: string; accent: string;
   value: number; format: (n: number) => string; reduced: boolean;
 }) {
   const shown = useCountUp(value, reduced);
   return (
-    <div
-      className="rounded-2xl p-5"
-      style={{ background: '#fff', border: '1.5px solid var(--border-soft)', boxShadow: '0 4px 16px -4px rgba(31,41,55,0.06)' }}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: bg, color: accent }}>
-          {icon}
-        </div>
-        <p className="text-xs font-semibold" style={{ color: 'var(--metal-mid)' }}>{label}</p>
-      </div>
-      <p
-        className="text-2xl font-extrabold mb-1 tabular-nums"
-        style={{ color: accent, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}
-        aria-label={format(value)}
-      >
-        {format(shown)}
-      </p>
-      {sub && <p className="text-xs" style={{ color: 'var(--metal-mid)' }}>{sub}</p>}
+    <li className="sim-num">
+      <span className="l">{label}</span>
+      <b style={{ color: accent }} aria-label={format(value)}>{format(shown)}</b>
+      {sub && <span className="s">{sub}</span>}
       {badge && (
-        <span
-          className="inline-flex items-center gap-1 mt-2 text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ background: 'var(--eco-light)', color: 'var(--eco-dark)' }}
-        >
+        <span className="bd">
           <Check size={12} strokeWidth={3} /> {badge}
         </span>
       )}
-    </div>
+    </li>
   );
 }
 
@@ -213,153 +197,101 @@ export default function SimulatorSection() {
   }, [power, estimate, offline, machines.length, machineKeys]);
 
   return (
-    <section
-      id="simulator-section"
-      ref={sectionRef}
-      className="py-24 md:py-32 px-4"
-      style={{ background: 'var(--bg-paper)' }}
-    >
-      <div className="max-w-2xl mx-auto">
-        <Reveal>
-          <div className="text-center mb-12">
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full"
-              style={{ background: 'var(--eco-light)', color: 'var(--eco-dark)' }}
-            >
-              <Sun size={13} strokeWidth={2.6} /> Simulator Right-Sizing
-            </span>
-            <h2
-              className="text-3xl md:text-4xl font-extrabold leading-tight mb-4"
-              style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
-            >
-              Temukan ukuran PLTS<br className="hidden md:block" /> yang pas untuk usahamu
-            </h2>
-            <p className="text-sm md:text-base" style={{ color: 'var(--metal-mid)' }}>
-              Ceritakan usahamu dengan kata-katamu sendiri, atau pilih langsung. Hasilnya muncul seketika.
-            </p>
-          </div>
-        </Reveal>
+    <section id="simulator-section" ref={sectionRef} className="sheet-band">
+      <div className="sheet-w">
+        <SectionHead
+          n="02"
+          label="Simulator"
+          title={<>Temukan ukuran PLTS yang <span className="hl">pas</span> untuk usahamu</>}
+          lead="Ceritakan usahamu dengan kata-katamu sendiri, atau pilih langsung. Hasilnya muncul seketika."
+        />
 
         <Reveal delay={80}>
-          <div
-            className="rounded-3xl overflow-hidden mb-5"
-            style={{ background: '#fff', border: '1.5px solid var(--border-soft)', boxShadow: '0 12px 40px -12px rgba(31,41,55,0.10)' }}
-          >
-            <div
-              className="px-6 md:px-8 py-4 flex items-center gap-2"
-              style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-soft)' }}
-            >
-              <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--eco-primary)' }} />
-              <span className="text-xs font-semibold" style={{ color: 'var(--metal-mid)' }}>Profil Usaha</span>
-              {detected && (
-                <span
-                  className="ml-auto inline-flex items-center gap-1 text-xs font-bold"
-                  style={{ color: 'var(--eco-dark)', animation: 'sim-pop 0.35s cubic-bezier(0.2,0.9,0.3,1.2) both' }}
-                >
-                  <Check size={12} strokeWidth={3} /> Terbaca dari ceritamu
-                </span>
-              )}
-            </div>
-
-            <div className="px-6 md:px-8 py-6">
-              <div className="relative mb-4">
+          <div className="sim-wrap">
+            <div className="sim-composer">
+              <div className="relative">
                 <label htmlFor="sim-text" className="sr-only">Ceritakan usahamu</label>
                 <textarea
                   id="sim-text"
                   value={text}
                   onChange={(e) => onText(e.target.value)}
                   rows={2}
-                  className="w-full bg-transparent text-base resize-none focus:outline-none relative z-10"
-                  style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)' }}
+                  className="sim-field relative z-10"
                 />
                 {!text && (
                   <span
-                    className="absolute top-0 left-0 text-base pointer-events-none select-none"
-                    style={{ color: 'var(--metal-light)' }}
+                    className="absolute top-0 left-0 pointer-events-none select-none"
+                    style={{ color: 'var(--metal-light)', font: '500 clamp(1.05rem,1.8vw,1.3rem)/1.45 var(--font-body)' }}
                     aria-hidden="true"
                   >
                     {ghost}
                     <span className="animate-pulse">|</span>
                   </span>
                 )}
-                <div className="h-px" style={{ background: 'var(--border-soft)' }} />
               </div>
 
-              {/* Tap-to-fill examples */}
-              <div className="flex flex-wrap items-center gap-2 mb-6">
-                <span className="text-xs font-bold" style={{ color: 'var(--metal-mid)' }}>Coba contoh:</span>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <span className="sim-lab" style={{ margin: 0 }}>Coba contoh</span>
                 {['Konveksi', 'Laundry', 'Kelontong', 'Bengkel Las'].map((name, i) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => onText(EXAMPLES[i])}
-                    className="px-3 py-1 rounded-full text-xs font-semibold transition-transform duration-150 hover:-translate-y-0.5 active:scale-95"
-                    style={{ background: 'var(--solar-light)', color: 'var(--solar-dark)' }}
-                  >
+                  <button key={name} type="button" className="sim-chip try" onClick={() => onText(EXAMPLES[i])}>
                     {name}
                   </button>
                 ))}
+                {detected && (
+                  <span
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-bold"
+                    style={{ color: 'var(--eco-dark)', animation: 'sim-pop 0.35s cubic-bezier(0.2,0.9,0.3,1.2) both' }}
+                  >
+                    <Check size={12} strokeWidth={3} /> Terbaca dari ceritamu
+                  </span>
+                )}
               </div>
 
-              <div className="mb-5">
-                <p className="text-xs font-bold mb-2.5" style={{ color: 'var(--metal-mid)' }}>Daya PLN Terpasang</p>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Daya PLN terpasang">
-                  {POWER_TAGS.map((tag) => {
-                    const on = power === tag;
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => { setPower(on ? '' : tag); setDetected(false); }}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 active:scale-95"
-                        style={{
-                          background: on ? 'var(--solar-primary)' : 'transparent',
-                          borderColor: on ? 'var(--solar-primary)' : 'var(--border-medium)',
-                          color: on ? '#fff' : 'var(--metal-mid)',
-                          boxShadow: on ? '0 2px 8px -2px rgba(255,158,44,0.4)' : 'none',
-                        }}
-                      >
-                        {tag}
-                      </button>
-                    );
-                  })}
+              <div className="sim-groups">
+                <div role="group" aria-label="Daya PLN terpasang">
+                  <span className="sim-lab">Daya PLN terpasang</span>
+                  <div className="flex flex-wrap gap-2">
+                    {POWER_TAGS.map((tag) => {
+                      const on = power === tag;
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          aria-pressed={on}
+                          className="sim-chip pw"
+                          onClick={() => { setPower(on ? '' : tag); setDetected(false); }}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold mb-2.5" style={{ color: 'var(--metal-mid)' }}>Mesin Fleksibel (opsional)</p>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Mesin fleksibel">
-                  {MACHINES.map(({ tag }) => {
-                    const on = machines.includes(tag);
-                    return (
+                <div role="group" aria-label="Mesin fleksibel">
+                  <span className="sim-lab">Mesin fleksibel (opsional)</span>
+                  <div className="flex flex-wrap gap-2">
+                    {MACHINES.map(({ tag }) => (
                       <button
                         key={tag}
                         type="button"
-                        aria-pressed={on}
+                        aria-pressed={machines.includes(tag)}
+                        className="sim-chip"
                         onClick={() => { toggleMachine(tag); setDetected(false); }}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 active:scale-95"
-                        style={{
-                          background: on ? 'var(--eco-primary)' : 'transparent',
-                          borderColor: on ? 'var(--eco-primary)' : 'var(--border-medium)',
-                          color: on ? '#fff' : 'var(--metal-mid)',
-                          boxShadow: on ? '0 2px 8px -2px rgba(47,191,113,0.35)' : 'none',
-                        }}
                       >
                         {tag}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </Reveal>
 
-        {/* Live result, with Si Kilo narrating */}
+        {/* Hasil langsung, Si Kilo yang menarasikan */}
         <div aria-live="polite">
           {loading && !result ? (
-            <div className="faq-msg faq-rest" style={{ paddingTop: 4 }}>
+            <div className="faq-msg faq-rest" style={{ paddingTop: 28 }}>
               <KiloAvatar className="faq-avatar" />
               <p className="inline-flex items-center gap-2">
                 <Loader2 size={14} className="animate-spin" /> Si Kilo sedang menghitung dengan tiruan digital WASKITA...
@@ -367,52 +299,46 @@ export default function SimulatorSection() {
             </div>
           ) : result ? (
             <div style={{ animation: 'sim-pop 0.45s cubic-bezier(0.2,0.9,0.3,1.2) both' }}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Metric
-                  label="Kapasitas PLTS Optimal"
+              <ul className="sim-nums">
+                <Num
+                  label="Kapasitas PLTS optimal"
                   sub={
                     result.estimate?.kwp_without_agent && result.estimate.kwp_reduction_pct
                       ? `Tanpa jadwal agen: ${result.estimate.kwp_without_agent.toFixed(1)} kWp`
                       : 'Dihitung setelah jadwal mesin diatur agen'
                   }
-                  icon={<Sun size={16} />}
-                  accent="var(--eco-primary)"
-                  bg="var(--eco-light)"
+                  accent="var(--eco-dark)"
                   value={result.kwp}
                   format={(n) => `${n.toFixed(1)} kWp`}
                   reduced={reduced}
                 />
-                <Metric
-                  label="Estimasi Hemat / Bulan"
+                <Num
+                  label="Estimasi hemat per bulan"
                   sub={
                     result.estimate
                       ? `${result.estimate.savings_pct.toFixed(0)}% dari tagihan ±Rp${Math.round(result.estimate.monthly_bill_now_idr).toLocaleString('id-ID')}`
                       : 'Estimasi kasar (offline)'
                   }
-                  icon={<Zap size={16} />}
                   accent="var(--solar-dark)"
-                  bg="var(--solar-light)"
                   value={result.hemat}
                   format={(n) => `Rp${Math.round(n).toLocaleString('id-ID')}`}
                   reduced={reduced}
                 />
-                <Metric
-                  label="Waktu Balik Modal"
+                <Num
+                  label="Waktu balik modal"
                   sub={result.capex > 0 ? `Investasi ±Rp${(result.capex / 1e6).toLocaleString('id-ID', { maximumFractionDigits: 1 })} juta` : undefined}
                   badge={
                     result.estimate?.kwp_reduction_pct
                       ? `Panel ${result.estimate.kwp_reduction_pct.toFixed(0)}% lebih kecil berkat agen`
                       : undefined
                   }
-                  icon={<ClipboardList size={16} />}
-                  accent="var(--eco-dark)"
-                  bg="var(--bg-surface)"
+                  accent="var(--metal-dark)"
                   value={result.pbp ?? 0}
                   format={(n) => (result.pbp != null ? `${n.toFixed(1)} Tahun` : '-')}
                   reduced={reduced}
                 />
-              </div>
-              <div className="faq-msg" style={{ paddingTop: 16 }}>
+              </ul>
+              <div className="faq-msg" style={{ paddingTop: 20 }}>
                 <KiloAvatar className="faq-avatar" />
                 <p>
                   {result.estimate ? (
@@ -434,7 +360,7 @@ export default function SimulatorSection() {
               </div>
             </div>
           ) : (
-            <div className="faq-msg faq-rest" style={{ paddingTop: 4 }}>
+            <div className="faq-msg faq-rest" style={{ paddingTop: 28 }}>
               <KiloAvatar className="faq-avatar" />
               <p>Pilih daya PLN atau tulis ceritamu, nanti Si Kilo yang hitung</p>
             </div>
