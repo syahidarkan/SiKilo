@@ -3,7 +3,7 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "ignoreCommand": "git diff HEAD^ HEAD --name-only | grep -qvE '^backend/'",
+  "ignoreCommand": "files=$(git diff HEAD^ HEAD --name-only); [ -n \"$files\" ] && ! echo \"$files\" | grep -qvE '^backend/'",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://sikilo-backend.up.railway.app"
   }
