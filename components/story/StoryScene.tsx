@@ -15,12 +15,12 @@ import './story.css';
    ───────────────────────────────────────────────────────────────────────────── */
 
 const CHAPTERS = [
-  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Laundry Barokah', body: 'Tagihan listrik sering baru terasa di akhir bulan, saat semuanya sudah terlambat. Ikuti satu hari kerja di toko ini dan lihat ke mana listrik Anda sebenarnya mengalir.', rail: 'Meteran' },
-  { a: 0.14, b: 0.26, kick: '01 · Pasang sensor', title: 'Satu sensor di panel, tanpa bongkar instalasi', body: 'Sensor cukup dijepitkan pada kabel masuk. Tidak perlu memutus listrik dan tidak perlu memasang alat di setiap mesin. Dari satu titik itu, pemakaian seluruh toko terbaca.', rail: 'Sensor' },
-  { a: 0.3, b: 0.5, kick: '02 · Kenali mesin', title: 'Kini jelas mesin mana yang paling boros', body: 'Dengan NILM, setiap mesin dikenali dari pola arusnya. Pada pagi hari, pengering dan setrika uap menyala bersamaan, dan seluruh bebannya ditanggung PLN.', rail: 'Mesin' },
-  { a: 0.54, b: 0.66, kick: '03 · Manfaatkan matahari', title: 'Matahari naik, panel surya mulai bekerja', body: 'Listrik dari panel hanya menghemat jika langsung terpakai. Sejak terbitnya Permen ESDM Nomor 2 Tahun 2024, kelebihan listrik tidak lagi memotong tagihan. Karena itu, waktu pemakaian menjadi kunci.', rail: 'Surya' },
-  { a: 0.69, b: 0.86, kick: '04 · Atur jadwal', title: 'Mesin berat digeser ke jam matahari', body: 'Agen penjadwal memindahkan beban yang bisa ditunda ke siang hari. Mesin cuci bekerja bergantian, lalu pengering dan setrika uap menyusul saat panel menghasilkan listrik paling banyak.', rail: 'Jadwal' },
-  { a: 0.9, b: 1.01, kick: '05 · Hasilnya', title: 'Meteran hijau, tagihan lebih ringan', body: 'Pada siang hari, sebagian besar kebutuhan listrik dilayani panel sendiri. Angka di layar ini hanya ilustrasi. Hitung perkiraan untuk usaha Anda di simulator.', rail: 'Hasil', cta: true },
+  { a: 0, b: 0.11, kick: 'Ilustrasi · Sukoharjo · 05.30', h: 1, title: 'Satu hari di Laundry Barokah', body: 'Tagihan listrik sering baru terasa di akhir bulan, saat semuanya sudah terlambat. Ikuti satu hari kerja di toko ini dan lihat ke mana listrik Anda sebenarnya mengalir.' },
+  { a: 0.14, b: 0.26, kick: '01 · Pasang sensor', title: 'Satu sensor di panel, tanpa bongkar instalasi', body: 'Sensor cukup dijepitkan pada kabel masuk. Tidak perlu memutus listrik dan tidak perlu memasang alat di setiap mesin. Dari satu titik itu, pemakaian seluruh toko terbaca.' },
+  { a: 0.3, b: 0.5, kick: '02 · Kenali mesin', title: 'Kini jelas mesin mana yang paling boros', body: 'Dengan NILM, setiap mesin dikenali dari pola arusnya. Pada pagi hari, pengering dan setrika uap menyala bersamaan, dan seluruh bebannya ditanggung PLN.' },
+  { a: 0.54, b: 0.66, kick: '03 · Manfaatkan matahari', title: 'Matahari naik, panel surya mulai bekerja', body: 'Listrik dari panel hanya menghemat jika langsung terpakai. Sejak terbitnya Permen ESDM Nomor 2 Tahun 2024, kelebihan listrik tidak lagi memotong tagihan. Karena itu, waktu pemakaian menjadi kunci.' },
+  { a: 0.69, b: 0.86, kick: '04 · Atur jadwal', title: 'Mesin berat digeser ke jam matahari', body: 'Agen penjadwal memindahkan beban yang bisa ditunda ke siang hari. Mesin cuci bekerja bergantian, lalu pengering dan setrika uap menyusul saat panel menghasilkan listrik paling banyak.' },
+  { a: 0.9, b: 1.01, kick: '05 · Hasilnya', title: 'Meteran hijau, tagihan lebih ringan', body: 'Pada siang hari, sebagian besar kebutuhan listrik dilayani panel sendiri. Angka di layar ini hanya ilustrasi. Hitung perkiraan untuk usaha Anda di simulator.', cta: true },
 ];
 
 const CAM_KEYS = [
@@ -638,14 +638,12 @@ export default function StoryScene() {
 
     /* ── referensi DOM ── */
     const copies = qa('.st-copy');
-    const railEls = qa('.st-rail li');
     const clouds = qa('.st-cloud');
     const tags = qa('.st-tag');
-    const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim');
+    const skyEl = q('.st-sky'), starsEl = q('.st-stars'), sunOrb = q('.st-sun'), moonOrb = q('.st-moon'), hint = q('.st-hint'), scrim = q('.st-scrim'), fade = q('.st-fade');
     const rHour = q('[data-r=hour]'), rLoad = q('[data-r=load]'), rPv = q('[data-r=pv]'), rGrid = q('[data-r=grid]'), rBar = q('[data-r=bar]'), rSelf = q('[data-r=self]');
     const cA = new THREE.Color(), cB = new THREE.Color(), cT = new THREE.Color(), cI = new THREE.Color();
     const inkDark = new THREE.Color(0x14281a), inkLight = new THREE.Color(0xf1f7f2), mutDark = new THREE.Color(0x3f5a46), mutLight = new THREE.Color(0xc4d4ca);
-    let lastRail = -1;
     const fmt = (n: number, d = 1) => n.toFixed(d).replace('.', ',');
     const projV = new THREE.Vector3();
 
@@ -819,12 +817,7 @@ export default function StoryScene() {
       scrim.style.opacity = maxO.toFixed(2);
       hint.style.opacity = p > 0.02 ? '0' : '1';
 
-      let cur = 0;
-      CHAPTERS.forEach((c, i) => { if (p >= c.a - 0.02) cur = i; });
-      if (cur !== lastRail) {
-        lastRail = cur;
-        railEls.forEach((el2, i) => { el2.className = (i < cur ? 'seen ' : '') + (i === cur ? 'now' : ''); });
-      }
+      fade.style.opacity = smooth(0.93, 1, p).toFixed(3);
 
       const hh2 = Math.floor(hr), mm = Math.floor((hr - hh2) * 60);
       rHour.textContent = String(hh2).padStart(2, '0') + '.' + String(mm).padStart(2, '0');
@@ -867,6 +860,7 @@ export default function StoryScene() {
         </div>
         <canvas className="st-canvas" />
         <div className="st-scrim" />
+        <div className="st-fade" />
         <div className="st-labels" aria-hidden="true">
           {MACHINES.map((m) => (
             <div className="st-tag" key={m.name}><i />{m.name}<b>0,00 kW</b></div>
@@ -882,12 +876,6 @@ export default function StoryScene() {
             {c.cta && <a className="st-btn" href="#simulator-section">Hitung untuk usaha Anda</a>}
           </div>
         ))}
-
-        <ol className="st-rail" aria-hidden="true">
-          {CHAPTERS.map((c, i) => (
-            <li key={i} className={i === 0 ? 'now' : ''}><span>{c.rail}</span><i /></li>
-          ))}
-        </ol>
 
         <dl className="st-readout" aria-label="Contoh pembacaan listrik, ilustrasi">
           <small><span>Contoh pembacaan</span><span data-r="hour">05.18</span></small>
