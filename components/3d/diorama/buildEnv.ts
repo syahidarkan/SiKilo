@@ -1,177 +1,189 @@
-/**
- * buildEnv — Road, trotoar, utility poles, tropical trees, vehicles
- * Full-color environment for NOTA LISTRIK 3-shop diorama.
- */
 import * as THREE from 'three';
-
-function mat(color: number, roughness = 0.82, metalness = 0, extra?: Partial<THREE.MeshStandardMaterialParameters>): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
-}
-function box(w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-  mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz);
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  return mesh;
-}
-function cyl(rt: number, rb: number, h: number, seg: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m);
-  mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
-  return mesh;
-}
 
 export interface EnvRefs {
   group: THREE.Group;
-  truckRef: THREE.Group; // for vibration animation
+  truckRef: THREE.Group;
 }
 
-export function buildEnv(): EnvRefs {
-  const g = new THREE.Group();
+function mat(hex: number, rough = 0.85, metal = 0.0): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal });
+}
 
-  // ── Ground shadow catcher ───────────────────────────────────────────────
-  const gcatcher = new THREE.Mesh(new THREE.PlaneGeometry(80, 50), mat(0xF4EFE6, 1.0));
-  gcatcher.rotation.x = -Math.PI / 2;
-  gcatcher.position.set(0, -0.15, 2);
-  gcatcher.receiveShadow = true;
-  g.add(gcatcher);
+function box(
+  w: number, h: number, d: number,
+  material: THREE.Material,
+  x = 0, y = 0, z = 0,
+  rx = 0, ry = 0, rz = 0,
+): THREE.Mesh {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  m.position.set(x, y, z);
+  m.rotation.set(rx, ry, rz);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
 
-  // ── Road ────────────────────────────────────────────────────────────────
-  g.add(box(44, 0.20, 16, mat(0x2D3748, 0.95), 0, -0.10, 5.5));
+function cyl(
+  rt: number, rb: number, h: number, seg: number,
+  material: THREE.Material,
+  x = 0, y = 0, z = 0,
+): THREE.Mesh {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), material);
+  m.position.set(x, y, z);
+  m.castShadow = true;
+  return m;
+}
 
-  // Lane markings (dashed center line)
-  const dashM = mat(0xFFFFFF, 0.95);
-  for (let i = -20; i <= 20; i += 3.2) {
-    g.add(box(1.8, 0.02, 0.22, dashM, i, 0.01, 5.5));
+function spanCable(
+  x1: number, y1: number, z1: number,
+  x2: number, y2: number, z2: number,
+  sag = 0.4,
+): THREE.Mesh {
+  const mid = new THREE.Vector3((x1 + x2) / 2, (y1 + y2) / 2 - sag, (z1 + z2) / 2);
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(x1, y1, z1),
+    mid,
+    new THREE.Vector3(x2, y2, z2),
+  ]);
+  const geo = new THREE.TubeGeometry(curve, 20, 0.035, 5, false);
+  const wireMat = new THREE.MeshStandardMaterial({ color: 0x1A1A1A, roughness: 0.9 });
+  const m = new THREE.Mesh(geo, wireMat);
+  m.castShadow = false;
+  return m;
+}
+
+function buildPole(x: number, z: number, g: THREE.Group): void {
+  const poleM = mat(0x506070, 0.7, 0.3);
+  const capM  = mat(0x607080, 0.6, 0.4);
+
+  // Main shaft
+  g.add(cyl(0.10, 0.14, 7.2, 8, poleM, x, 3.6, z));
+  // Cap
+  g.add(cyl(0.14, 0.14, 0.14, 8, capM, x, 7.27, z));
+  // Cross-arm
+  const arm = box(2.6, 0.09, 0.09, capM, x, 6.65, z);
+  g.add(arm);
+  // 3 insulator studs at arm ends and center
+  for (const ix of [x - 1.2, x, x + 1.2]) {
+    g.add(cyl(0.045, 0.045, 0.14, 6, mat(0xC8C8C8, 0.5, 0.0), ix, 6.75, z));
   }
+}
 
-  // ── Sidewalk (trotoar) ───────────────────────────────────────────────────
-  g.add(box(44, 0.25, 6.5, mat(0xE5E7EB, 0.90), 0, 0.125, 0.75));
-  // Kerb face
-  g.add(box(44, 0.25, 0.14, mat(0xD1D5DB, 0.85), 0, 0.0, 3.57));
-  // Paving seam lines
-  const seamM = mat(0xCED2DA, 0.92);
-  for (let i = -20; i <= 20; i += 2) {
-    g.add(box(0.06, 0.26, 6.5, seamM, i, 0.125, 0.75));
-  }
-
-  // ── Utility Poles (PLN) — AT TROTOAR LEVEL ───────────────────────────────
-  const poleM = mat(0xC9C5BD, 0.80, 0.05);
-  const capM  = mat(0x94A3B8, 0.50, 0.3);
-  const insM  = mat(0xFAFAF9, 0.50);
-  const wireLineMat = new THREE.LineBasicMaterial({ color: 0x1F2937, linewidth: 2 });
-
-  function addPole(px: number) {
-    const pg = new THREE.Group();
-    // Concrete shaft
-    pg.add(cyl(0.10, 0.14, 7.0, 10, poleM, 0, 3.5, 0));
-    // Cross arm
-    pg.add(box(3.0, 0.10, 0.10, poleM, 0, 6.65, 0));
-    // Ceramic insulators
-    for (const ix of [-1.35, 0, 1.35]) {
-      const ins = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), insM);
-      ins.position.set(ix, 6.52, 0); ins.castShadow = true;
-      pg.add(ins);
-    }
-    // PLN cap
-    pg.add(cyl(0.15, 0.15, 0.14, 10, capM, 0, 7.10, 0));
-    pg.position.set(px, 0, 3.2);
-    g.add(pg);
-
-    // Drooping wires from each insulator to shop meter area
-    const wireTargets = [-7.8, 0.0, 7.8];
-    wireTargets.forEach((tx) => {
-      const pts: THREE.Vector3[] = [];
-      for (let t = 0; t <= 1; t += 0.08) {
-        const wx = px + (tx - px) * t;
-        const wy = 6.5 - Math.sin(t * Math.PI) * 0.7;
-        const wz = 3.2 - t * 1.0;
-        pts.push(new THREE.Vector3(wx, wy, wz));
-      }
-      const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
-      g.add(new THREE.Line(lineGeo, wireLineMat));
-    });
-  }
-
-  addPole(-11.5);
-  addPole(+11.5);
-
-  // ── Tropical Trees (trachycarpus / pohon peneduh) ─────────────────────────
-  function addTree(px: number) {
-    const tg = new THREE.Group();
-    // Trunk
-    tg.add(cyl(0.15, 0.20, 2.8, 8, mat(0x78350F, 0.85), 0, 1.4, 0));
-    // Canopy layers — rich tropical green
-    const leaf1M = mat(0x16A34A, 0.75);
-    const leaf2M = mat(0x15803D, 0.70);
-    tg.add(new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 7), leaf1M));
-    const top = new THREE.Mesh(new THREE.SphereGeometry(0.85, 9, 6), leaf2M);
-    top.position.y = 1.05; top.castShadow = true;
-    tg.add(top);
-    tg.children.forEach((c) => { (c as THREE.Mesh).castShadow = true; (c as THREE.Mesh).receiveShadow = true; });
-    tg.position.set(px, 2.8, 3.6);
-    g.add(tg);
-  }
-  addTree(-3.8);
-  addTree(+3.8);
-
-  // ── Pickup Truck — BLUE ───────────────────────────────────────────────────
+function buildTruck(g: THREE.Group): THREE.Group {
   const truck = new THREE.Group();
-  const cabM   = mat(0x1E40AF, 0.65);       // dark blue
-  const windM  = mat(0x93C5FD, 0.10, 0.1, { transparent: true, opacity: 0.55 });
-  const bedM   = mat(0x1E3A8A, 0.75);
-  const tireM  = mat(0x111827, 0.95);
-  const rimM   = mat(0xB0B7C3, 0.55, 0.5);
-  const lampM  = mat(0xFEF08A, 0.1, 0.0, { emissive: new THREE.Color(0xFEF08A), emissiveIntensity: 0.9 });
 
   // Cabin
-  truck.add(box(2.4, 1.1, 1.6, cabM, 0, 1.35, 0));
+  const cabinM = mat(0xE63946, 0.6, 0.1);
+  const cabin  = box(2.4, 1.0, 1.4, cabinM, 0, 0.9, 0);
+  truck.add(cabin);
   // Windshield
-  truck.add(box(2.41, 0.6, 0.07, windM, 0, 1.55, -0.77));
-  // Headlamps
-  truck.add(box(0.28, 0.18, 0.07, lampM, -0.75, 1.1, -0.80));
-  truck.add(box(0.28, 0.18, 0.07, lampM,  0.75, 1.1, -0.80));
-  // Truck bed
-  truck.add(box(2.4, 0.65, 2.6, bedM, 0, 0.93, 1.6));
-  truck.add(box(2.4, 0.38, 0.09, bedM, 0, 1.19, 2.9));  // tailgate
-  truck.add(box(0.09, 0.38, 2.6, bedM, -1.2, 1.19, 1.6));
-  truck.add(box(0.09, 0.38, 2.6, bedM,  1.2, 1.19, 1.6));
-  // Undercarriage
-  truck.add(box(2.4, 0.38, 4.5, mat(0x374151, 0.9), 0, 0.54, 0.75));
-  // Wheels
-  for (const [wx, wz] of [[-1.1, -0.65], [1.1, -0.65], [-1.1, 2.1], [1.1, 2.1]]) {
-    const w = cyl(0.40, 0.40, 0.30, 12, tireM, wx, 0.40, wz);
-    w.rotation.z = Math.PI / 2; truck.add(w);
-    const r = cyl(0.20, 0.20, 0.32, 10, rimM, wx, 0.40, wz);
-    r.rotation.z = Math.PI / 2; truck.add(r);
-  }
-  // Rice sacks (8 cylinders, goni krem)
-  const sackM = mat(0xD7C4A5, 0.90);
-  const sackPositions: [number, number][] = [
-    [-0.6,1.1],[0.6,1.1],[-0.6,1.8],[0.6,1.8],[0,2.5],[-0.6,2.5],[0.6,2.5],[0,1.5],
-  ];
-  sackPositions.forEach(([sx, sz]) => {
-    const sack = cyl(0.30, 0.34, 0.60, 8, sackM, sx, 1.52, sz);
-    sack.rotation.x = Math.PI / 2; truck.add(sack);
-  });
+  const glassM = new THREE.MeshStandardMaterial({ color: 0x90CAF9, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.6 });
+  truck.add(box(1.3, 0.5, 0.06, glassM, 0.6, 1.1, 0.68));
 
-  truck.position.set(-4.0, 0, 6.2);
-  truck.rotation.y = 0.05;
+  // Cargo bed
+  truck.add(box(3.0, 0.14, 1.4, mat(0xCC3030, 0.7), -1.0, 0.44, 0));
+  truck.add(box(3.0, 0.60, 0.08, mat(0x8B2020, 0.8), -1.0, 0.76, 0.69));
+  truck.add(box(3.0, 0.60, 0.08, mat(0x8B2020, 0.8), -1.0, 0.76, -0.69));
+  truck.add(box(0.08, 0.60, 1.40, mat(0x8B2020, 0.8), -2.5, 0.76, 0));
+
+  // Chassis
+  truck.add(box(5.6, 0.22, 1.2, mat(0x444444, 0.9), -0.2, 0.11, 0));
+
+  // Wheels (4)
+  const wheelM = mat(0x1A1A1A, 0.95, 0.0);
+  const rimM   = mat(0xBBBBBB, 0.4, 0.8);
+  for (const [wx, wz] of [[-1.5, 0.76], [-1.5, -0.76], [1.0, 0.76], [1.0, -0.76]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12), wheelM);
+    w.rotation.x = Math.PI / 2;
+    w.position.set(wx, 0.32, wz as number);
+    truck.add(w);
+    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.24, 8), rimM);
+    r.rotation.x = Math.PI / 2;
+    r.position.set(wx, 0.32, wz as number);
+    truck.add(r);
+  }
+
+  // Headlights
+  const lightM = new THREE.MeshStandardMaterial({ color: 0xFFFFCC, emissive: new THREE.Color(0xFFFF88), emissiveIntensity: 1.0 });
+  truck.add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.24), lightM));
+  const hl = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.24), lightM);
+  hl.position.set(0, 0, 0);
+  truck.add(hl);
+  const hl1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.24), lightM);
+  hl1.position.set(1.2, 0.72, 0.5);
+  truck.add(hl1);
+  const hl2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.24), lightM);
+  hl2.position.set(1.2, 0.72, -0.5);
+  truck.add(hl2);
+
+  // Face truck along -X (from positive X toward negative X)
+  truck.rotation.y = -Math.PI / 2;
+  truck.position.set(0, 0.0, 6.8);
+
   g.add(truck);
+  return truck;
+}
 
-  // ── Motorcycle — RED ──────────────────────────────────────────────────────
-  const moto = new THREE.Group();
-  const bodyM = mat(0xDC2626, 0.65);
-  moto.add(box(0.30, 0.55, 1.3, bodyM, 0, 0.78, 0));
-  moto.add(box(0.28, 0.30, 0.55, mat(0xB91C1C, 0.60), 0, 1.04, -0.28));  // tank
-  moto.add(box(0.24, 0.10, 0.60, mat(0x111827, 0.80), 0, 1.03, 0.25));   // seat
-  moto.add(box(0.60, 0.07, 0.07, mat(0x9CA3AF, 0.5, 0.6), 0, 1.21, -0.60)); // handlebar
-  // Wheels
-  for (const wz of [-0.52, 0.52]) {
-    const tw = cyl(0.30, 0.30, 0.15, 12, tireM, 0, 0.30, wz);
-    tw.rotation.z = Math.PI / 2; moto.add(tw);
+export function buildEnv(scene: THREE.Scene): EnvRefs {
+  const g = new THREE.Group();
+
+  // ── Ground plane ──────────────────────────────────────────────
+  const groundM = mat(0xC8C4B0, 0.95);
+  g.add(box(50, 0.14, 24, groundM, 0, -0.07, 5.0));
+
+  // ── Trotoar (sidewalk) Z 2.2→5.0, centre 3.6 ────────────────
+  const trotoarM = new THREE.MeshStandardMaterial({ color: 0xD0CCBC, roughness: 0.9 });
+  g.add(box(50, 0.24, 2.8, trotoarM, 0, 0.12, 3.6));
+
+  // Paving pattern — thin lines
+  const lineM = new THREE.MeshStandardMaterial({ color: 0xB8B4A4, roughness: 1.0 });
+  for (let xi = -24; xi <= 24; xi += 2) {
+    g.add(box(0.04, 0.26, 2.8, lineM, xi, 0.13, 3.6));
   }
-  moto.position.set(-5.8, 0, 3.6);
-  moto.rotation.y = -0.25;
-  g.add(moto);
+  for (const zi of [2.5, 3.0, 3.5, 4.0, 4.5]) {
+    g.add(box(50, 0.26, 0.04, lineM, 0, 0.13, zi));
+  }
 
-  return { group: g, truckRef: truck };
+  // ── Road Z 5.0→14.0, centre 9.5 ──────────────────────────────
+  const roadM = new THREE.MeshStandardMaterial({ color: 0x2B2F38, roughness: 0.95 });
+  g.add(box(50, 0.20, 9.0, roadM, 0, -0.10, 9.5));
+
+  // Kerb strip
+  const kerbM = mat(0x888880, 0.8);
+  g.add(box(50, 0.28, 0.18, kerbM, 0, 0.14, 5.0));
+
+  // Lane markings (dashed centre line)
+  const dashM = new THREE.MeshStandardMaterial({ color: 0xF5F0DC, roughness: 0.9 });
+  for (let xi = -23; xi <= 23; xi += 3.0) {
+    g.add(box(1.6, 0.21, 0.12, dashM, xi, -0.095, 9.5));
+  }
+
+  // ── PLN Poles at X=±14, Z=4.0 ────────────────────────────────
+  buildPole(-14, 3.8, g);
+  buildPole(+14, 3.8, g);
+
+  // ── 3 Horizontal span cables between poles ───────────────────
+  g.add(spanCable(-13.7, 6.60, 3.78,  13.7, 6.60, 3.78, 0.35));
+  g.add(spanCable(-13.7, 6.68, 3.80,  13.7, 6.68, 3.80, 0.32));
+  g.add(spanCable(-13.7, 6.76, 3.82,  13.7, 6.76, 3.82, 0.30));
+
+  // ── Parked motorcycle (stationary decoration) ─────────────────
+  const motoGroup = new THREE.Group();
+  const motoBodyM = mat(0x4A4A8A, 0.6, 0.2);
+  motoGroup.add(box(1.3, 0.38, 0.38, motoBodyM, 0, 0.4, 0));
+  for (const wx of [-0.5, 0.5]) {
+    const wh = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.14, 10), mat(0x111111, 0.9));
+    wh.rotation.x = Math.PI / 2;
+    wh.position.set(wx, 0.22, 0);
+    motoGroup.add(wh);
+  }
+  motoGroup.rotation.y = -Math.PI / 2;
+  motoGroup.position.set(-16.5, 0.0, 4.5);
+  g.add(motoGroup);
+
+  // ── Moving pickup truck ───────────────────────────────────────
+  const truckRef = buildTruck(g);
+
+  scene.add(g);
+  return { group: g, truckRef };
 }

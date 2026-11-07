@@ -1,414 +1,482 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { buildEnv }    from '@/components/3d/diorama/buildEnv';
-import { buildShops }  from '@/components/3d/diorama/buildShops';
-import { buildCables } from '@/components/3d/diorama/buildCables';
-import { createMascotKilo, type MascotKilo } from '@/components/3d/MascotKilo';
+import { buildEnv }    from './diorama/buildEnv';
+import { buildShops }  from './diorama/buildShops';
+import { buildCables, tickParticles } from './diorama/buildCables';
+import { createMascotKilo, type MoodState } from './MascotKilo';
 
-// ─── Story beats ──────────────────────────────────────────────────────────────
-const STORY_BEATS = [
-  {
-    kicker: '01 POTRET NYATA UMKM',
-    kickerColor: 'var(--grid-alert)',
-    heading: 'Tiga usaha berdampingan,\ntiga cara listrik terbuang',
-    subtitle: 'Dari freezer yang menyala nonstop hingga mesin pemanas berdaya tinggi, pemilik usaha membayar tagihan membengkak tanpa tahu alat mana yang bocor daya.',
-  },
-  {
-    kicker: '02 DETEKSI NILM',
-    kickerColor: 'var(--eco-primary)',
-    heading: 'Deteksi kebocoran daya\ntanpa bongkar alat',
-    subtitle: 'Algoritma NILM membaca sidik jari arus listrik secara non-invasif dari meteran induk, langsung membedakan tarikan kompresor freezer dari peralatan lainnya.',
-  },
-  {
-    kicker: '03 PENJADWALAN PREDIKTIF',
-    kickerColor: 'var(--eco-primary)',
-    heading: 'Nyalakan mesin berat\nsaat surya melimpah',
-    subtitle: 'Sesuai regulasi Permen ESDM 2/2024, AI menjadwalkan mesin pengering dan setrika uap bekerja saat produksi PLTS atap mencapai titik tertinggi.',
-  },
-  {
-    kicker: '04 HASIL TERUKUR',
-    kickerColor: 'var(--solar-primary)',
-    heading: 'PLTS tepat ukuran,\ninvestasi aman',
-    subtitle: 'Data operasional riil dikonversi menjadi rapor kelayakan bank untuk pembiayaan panel surya tanpa tebak-tebakan kapasitas.',
-  },
-];
-
-// ─── Camera keyframes (lookAt targets) ───────────────────────────────────────
-// Camera position is ALWAYS lookAt + (14, 12, 14) — true isometric 45°.
-const CAM_TARGETS = [
-  { lx:  0.0, ly: 2.0, lz: 3.0, zoom: 0.95 },
-  { lx: -7.5, ly: 1.6, lz: 2.5, zoom: 2.10 },
-  { lx:  5.5, ly: 2.2, lz: 2.0, zoom: 1.85 },
-  { lx:  6.5, ly: 1.3, lz: 2.6, zoom: 3.80 },
-];
-
-const BEAT_RANGES: [number, number][] = [
-  [0.00, 0.25], [0.25, 0.50], [0.50, 0.75], [0.75, 1.00],
-];
-
-function smoothstep(x: number, lo: number, hi: number): number {
-  const t = Math.max(0, Math.min(1, (x - lo) / (hi - lo)));
-  return t * t * (3 - 2 * t);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function smoothstep(t: number, e0 = 0, e1 = 1): number {
+  const x = Math.max(0, Math.min(1, (t - e0) / (e1 - e0)));
+  return x * x * (3 - 2 * x);
 }
 
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+// ── Camera keyframes (sp → target) ────────────────────────────────────────────
+interface CamKF { sp: number; lx: number; ly: number; lz: number; zoom: number }
+const CAM_KF: CamKF[] = [
+  { sp: 0.00, lx:  0.0,   ly: 2.0, lz: 2.0,  zoom: 0.88 },  // 0: overview
+  { sp: 0.17, lx: -9.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 1: kelontong shop
+  { sp: 0.30, lx: -11.75, ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 2: kelontong meter
+  { sp: 0.42, lx:  0.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 3: konveksi shop
+  { sp: 0.54, lx: -2.75,  ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 4: konveksi meter
+  { sp: 0.67, lx: +9.0,   ly: 2.0, lz: 1.5,  zoom: 1.85 },  // 5: laundry shop
+  { sp: 0.79, lx: +6.25,  ly: 2.5, lz: 2.1,  zoom: 2.70 },  // 6: laundry meter
+  { sp: 0.90, lx:  0.0,   ly: 2.5, lz: 2.0,  zoom: 0.95 },  // 7: finale
+  { sp: 1.00, lx:  0.0,   ly: 2.5, lz: 2.0,  zoom: 0.95 },  // anchor
+];
+
+function getCamTarget(sp: number): CamKF {
+  let i = 0;
+  while (i < CAM_KF.length - 2 && sp > CAM_KF[i + 1].sp) i++;
+  const a = CAM_KF[i], b = CAM_KF[i + 1];
+  const range = b.sp - a.sp;
+  const t = range < 0.001 ? 1 : smoothstep((sp - a.sp) / range);
+  return {
+    sp,
+    lx:   lerp(a.lx,   b.lx,   t),
+    ly:   lerp(a.ly,   b.ly,   t),
+    lz:   lerp(a.lz,   b.lz,   t),
+    zoom: lerp(a.zoom, b.zoom, t),
+  };
+}
+
+// ── Mascot waypoints per sub-beat (0–7) ───────────────────────────────────────
+const MASCOT_POS: [number, number, number][] = [
+  [ 0.0,  0.53, 3.4],   // 0: trotoar center, shocked
+  [-9.0,  1.11, 1.5],   // 1: Kelontong counter, shocked
+  [-11.75,1.55, 2.0],   // 2: Kelontong meter, scanning
+  [-0.5,  1.11, 0.8],   // 3: Konveksi sewing table, shocked
+  [-2.75, 1.55, 2.0],   // 4: Konveksi meter, scanning
+  [ 9.0,  0.65, 1.8],   // 5: Laundry baskets, shocked
+  [ 6.25, 1.55, 2.0],   // 6: Laundry meter, scanning
+  [ 0.0,  0.53, 3.4],   // 7: trotoar center, happy
+];
+
+const MASCOT_MOODS: MoodState[] = [
+  'shocked','shocked','scanning','shocked','scanning','shocked','scanning','happy',
+];
+
+function getSubBeat(sp: number): number {
+  if (sp < 0.15) return 0;
+  if (sp < 0.28) return 1;
+  if (sp < 0.40) return 2;
+  if (sp < 0.52) return 3;
+  if (sp < 0.65) return 4;
+  if (sp < 0.76) return 5;
+  if (sp < 0.88) return 6;
+  return 7;
+}
+
+// ── Story beats for card overlay (5 cards) ───────────────────────────────────
+interface Beat {
+  kicker: string;
+  kickerColor: string;
+  heading: string;
+  subtitle: string;
+  cta?: boolean;
+}
+
+const STORY_BEATS: Beat[] = [
+  {
+    kicker: '01 MASALAH ENERGI',
+    kickerColor: '#EF4444',
+    heading: 'Tiga usaha, tiga cara\nlistrik terbuang',
+    subtitle: 'Dari pendingin freezer non-stop hingga setrika uap, tagihan membengkak tanpa tahu peralatan mana yang bocor daya.',
+  },
+  {
+    kicker: '02 DETEKSI KELONTONG',
+    kickerColor: 'var(--eco-primary)',
+    heading: 'Temukan kompresor bocor\ntanpa bongkar mesin',
+    subtitle: 'Sensor jepit membaca sidik jari arus listrik meteran induk. NILM langsung identifikasi kompresor freezer yang boros.',
+  },
+  {
+    kicker: '03 OPTIMASI KONVEKSI',
+    kickerColor: 'var(--eco-primary)',
+    heading: 'Cegah trip beban puncak\ndengan jadwal cerdas',
+    subtitle: 'AI mengatur jadwal boiler setrika uap agar tidak bertabrakan dengan motor jahit—memangkas tagihan daya kVA.',
+  },
+  {
+    kicker: '04 SINERGI SURYA LAUNDRY',
+    kickerColor: '#F59E0B',
+    heading: 'Nyalakan pengering saat\nproduksi surya puncak',
+    subtitle: 'Sesuai Permen ESDM 2/2024, daya surya diserap 100% mandiri oleh mesin pengering besar di jam terik.',
+  },
+  {
+    kicker: '05 HASIL TERUKUR',
+    kickerColor: 'var(--solar-primary)',
+    heading: 'Kawasan UMKM hemat energi,\nsiap pembiayaan bank',
+    subtitle: 'Rapor energi presisi membuktikan penghematan nyata—dasar kelayakan instalasi PLTS atap tanpa tebak-tebakan.',
+    cta: true,
+  },
+];
+
+const CARD_RANGES: [number, number][] = [
+  [0.00, 0.17],
+  [0.15, 0.42],
+  [0.40, 0.67],
+  [0.65, 0.90],
+  [0.88, 1.00],
+];
+
 function beatOpacity(sp: number, s: number, e: number, fade = 0.04): number {
-  if (sp <= s || sp >= e) return 0;
-  if (sp < s + fade) return (sp - s) / fade;
-  if (sp > e - fade) return (e - sp) / fade;
+  if (sp < s || sp > e) return 0;
+  const halfFade = fade;
+  if (sp < s + halfFade) return (sp - s) / halfFade;
+  if (sp > e - halfFade) return (e - sp) / halfFade;
   return 1;
 }
 
-export default function HeroDioramaScene() {
+export default function HeroDioramaScene(): React.ReactElement {
   const mountRef   = useRef<HTMLDivElement>(null);
-  const overlayRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null]);
-  const ctaRef     = useRef<HTMLButtonElement>(null);
-  const blendRef   = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<(HTMLDivElement | null)[]>([]);
+  const ctaRef     = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
     const canvas = mountRef.current;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
 
-    // ── Renderer ────────────────────────────────────────────────────────────
+    // ── Renderer ────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(W, H);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMappingExposure = 1.1;
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = '0';
+    renderer.domElement.style.left = '0';
+    renderer.domElement.style.zIndex = '0';
     canvas.appendChild(renderer.domElement);
 
-    // ── Scene ────────────────────────────────────────────────────────────────
+    // ── Scene ────────────────────────────────────────────────────
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFBF9F4);
-    scene.fog = new THREE.Fog(0xFBF9F4, 26, 60);
+    scene.fog = new THREE.FogExp2(0xFBF9F4, 0.025);
 
-    // ── Camera (Orthographic, true isometric) ─────────────────────────────
-    const isMobile = canvas.clientWidth < 640;
-    const D_BASE   = isMobile ? 7.5 : 11;
-    let d = D_BASE;
-    let aspect = canvas.clientWidth / canvas.clientHeight;
-    const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 500);
-    camera.zoom = 0.95;
-    camera.updateProjectionMatrix();
+    // ── Camera (orthographic) ────────────────────────────────────
+    const aspect = W / H;
+    const D_BASE = 11;
+    let currentZoom = 0.88;
+    let currentLook = new THREE.Vector3(0, 2.0, 2.0);
 
-    // Current LERP state
-    const camLook = new THREE.Vector3(0, 2.0, 3.0);
-    let camZoom   = 0.95;
+    const camera = new THREE.OrthographicCamera(
+      -D_BASE * aspect / currentZoom, D_BASE * aspect / currentZoom,
+       D_BASE / currentZoom, -D_BASE / currentZoom,
+      0.1, 200,
+    );
+    function updateCamera(lookAt: THREE.Vector3, zoom: number): void {
+      camera.left   = -D_BASE * aspect / zoom;
+      camera.right  =  D_BASE * aspect / zoom;
+      camera.top    =  D_BASE / zoom;
+      camera.bottom = -D_BASE / zoom;
+      camera.updateProjectionMatrix();
+      camera.position.set(lookAt.x + 13, lookAt.y + 11, lookAt.z + 13);
+      camera.lookAt(lookAt);
+    }
+    updateCamera(currentLook, currentZoom);
 
-    // ── Lighting ─────────────────────────────────────────────────────────────
-    const hemi = new THREE.HemisphereLight(0xFFF8E7, 0xE8E2D5, 0.65);
+    // ── Lights ────────────────────────────────────────────────────
+    const hemi = new THREE.HemisphereLight(0xFFF4E0, 0xC8D8A0, 0.65);
     scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xFFE4C4, 1.4);
-    sun.position.set(15, 20, 15);
+    const sun = new THREE.DirectionalLight(0xFFF5E0, 1.3);
+    sun.position.set(12, 20, 12);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 0.5;
     sun.shadow.camera.far  = 80;
-    const sc = sun.shadow.camera as THREE.OrthographicCamera;
-    sc.left = -28; sc.right = 28; sc.top = 28; sc.bottom = -28;
+    sun.shadow.camera.left   = -22;
+    sun.shadow.camera.right  =  22;
+    sun.shadow.camera.top    =  18;
+    sun.shadow.camera.bottom = -6;
     scene.add(sun);
 
-    const intLight = new THREE.PointLight(0xFFF176, 0, 8);
-    intLight.position.set(6.5, 1.8, 2.0);
-    scene.add(intLight);
+    const fill = new THREE.DirectionalLight(0xE0ECFF, 0.4);
+    fill.position.set(-8, 8, -4);
+    scene.add(fill);
 
-    const signLight = new THREE.PointLight(0xFFA726, 0, 6);
-    signLight.position.set(6.5, 3.5, 2.5);
-    scene.add(signLight);
+    // ── Build scene objects ───────────────────────────────────────
+    const env   = buildEnv(scene);
+    const shops = buildShops(scene);
+    const cables = buildCables(scene, [shops.meterPos1, shops.meterPos2, shops.meterPos3]);
 
-    // ── Build scene objects ───────────────────────────────────────────────────
-    const env    = buildEnv();
-    scene.add(env.group);
-
-    const shops  = buildShops();
-    scene.add(shops.group);
-
-    const cables = buildCables();
-    scene.add(cables.group);
-
-    // ── Mascot ────────────────────────────────────────────────────────────────
-    type TrackedMascot = MascotKilo & { _mood?: string };
-    const mascot: TrackedMascot = createMascotKilo() as TrackedMascot;
-    mascot.refs.root.scale.setScalar(0.44);
-    mascot.refs.root.position.set(-6.0, 0.35, 3.2);
-    mascot.setMood('shocked'); mascot._mood = 'shocked';
+    // ── Mascot ────────────────────────────────────────────────────
+    const mascot = createMascotKilo();
     scene.add(mascot.refs.root);
+    mascot.refs.root.position.set(0, 0.53, 3.4);
+    mascot.setMood('shocked');
 
-    const beat1Pos  = new THREE.Vector3(-6.0,  0.35, 3.2);
-    const beat2Pos  = new THREE.Vector3(-6.8,  1.35, 2.4);
-    const beat3Pos  = new THREE.Vector3( 6.5,  1.1,  2.4);
-    const beat4Pos  = new THREE.Vector3( 6.5,  1.3,  2.6);
+    // ── Scroll tracking ───────────────────────────────────────────
+    let rawProgress  = 0;
+    let smoothProgress = 0;
 
-    // ── Scroll tracking ───────────────────────────────────────────────────────
-    let rawProgress = 0, smoothProgress = 0;
-    function updateRaw() {
-      const track = document.getElementById('scroll-track');
-      if (!track) return;
-      const max = track.offsetHeight - window.innerHeight;
-      rawProgress = max > 0 ? Math.min(Math.max(window.scrollY / max, 0), 1) : 0;
+    function onScroll(): void {
+      const scrollTrack = document.getElementById('scroll-track');
+      if (!scrollTrack) return;
+      const rect  = scrollTrack.getBoundingClientRect();
+      const total = scrollTrack.clientHeight - window.innerHeight;
+      rawProgress = Math.max(0, Math.min(1, -rect.top / total));
     }
-    window.addEventListener('scroll', updateRaw, { passive: true });
-    updateRaw();
+    window.addEventListener('scroll', onScroll, { passive: true });
 
-    // ── Mouse for eye tracking ────────────────────────────────────────────────
-    const mouse = new THREE.Vector2();
-    function onMouse(e: MouseEvent) {
-      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    }
-    canvas.addEventListener('mousemove', onMouse);
+    // ── Resize ───────────────────────────────────────────────────
+    const ro = new ResizeObserver(() => {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      renderer.setSize(w, h);
+      const asp = w / h;
+      camera.left   = -D_BASE * asp / currentZoom;
+      camera.right  =  D_BASE * asp / currentZoom;
+      camera.top    =  D_BASE / currentZoom;
+      camera.bottom = -D_BASE / currentZoom;
+      camera.updateProjectionMatrix();
+    });
+    ro.observe(canvas);
 
-    // ── Animate ───────────────────────────────────────────────────────────────
+    // ── Animation loop ───────────────────────────────────────────
     const clock = new THREE.Clock();
-    let animId = 0;
+    let   time  = 0;
+    let   animId = 0;
+    let   prevSubBeat = -1;
 
-    function animate() {
+    const targetPos   = new THREE.Vector3();
+    const currentMascotPos = new THREE.Vector3(0, 0.53, 3.4);
+
+    function animate(): void {
       animId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const time  = clock.getElapsedTime();
+      const delta = Math.min(clock.getDelta(), 0.05);
+      time += delta;
 
+      // Smooth scroll
       smoothProgress += (rawProgress - smoothProgress) * 0.072;
       const sp = smoothProgress;
 
-      // ── Camera (TRUE ISOMETRIC — never flat) ────────────────────────────
-      const beatIdx = BEAT_RANGES.findIndex(([s, e]) => sp >= s && sp < e);
-      const bi      = beatIdx < 0 ? 3 : beatIdx;
-      const bNext   = Math.min(bi + 1, 3);
-      const [bs, be] = BEAT_RANGES[bi];
-      const bt = bi === 3 ? 1.0 : smoothstep(sp, bs, be);
-      const ca = CAM_TARGETS[bi], cb = CAM_TARGETS[bNext];
-      const tLx = ca.lx + (cb.lx - ca.lx) * bt;
-      const tLy = ca.ly + (cb.ly - ca.ly) * bt;
-      const tLz = ca.lz + (cb.lz - ca.lz) * bt;
-      const tZ  = ca.zoom + (cb.zoom - ca.zoom) * bt;
+      // ── Sub-beat state ──────────────────────────────────────────
+      const subBeat = getSubBeat(sp);
+      const camKF   = getCamTarget(sp);
 
-      camLook.lerp(new THREE.Vector3(tLx, tLy, tLz), 0.08);
-      camZoom += (tZ - camZoom) * 0.08;
+      // ── Camera lerp ─────────────────────────────────────────────
+      currentLook.lerp(new THREE.Vector3(camKF.lx, camKF.ly, camKF.lz), 0.05);
+      currentZoom += (camKF.zoom - currentZoom) * 0.05;
+      updateCamera(currentLook, currentZoom);
 
-      // Isometric offset: always (+14, +12, +14) → maintains 45° angle
-      camera.position.set(camLook.x + 14, camLook.y + 12, camLook.z + 14);
-      camera.lookAt(camLook);
-      camera.zoom = camZoom;
-      camera.updateProjectionMatrix();
+      // ── Mascot movement ──────────────────────────────────────────
+      const mp = MASCOT_POS[subBeat];
+      targetPos.set(mp[0], mp[1], mp[2]);
+      currentMascotPos.lerp(targetPos, 0.04);
+      mascot.refs.root.position.copy(currentMascotPos);
 
-      // ── Lighting by beat ────────────────────────────────────────────────
-      if (sp < 0.25) {
-        sun.position.set(15, 20, 15); sun.color.setHex(0xFFE4C4);
-        sun.intensity = 1.4; hemi.intensity = 0.60;
-        intLight.intensity = 0; signLight.intensity = 0;
-      } else if (sp < 0.50) {
-        sun.position.set(10, 22, 12); sun.color.setHex(0xFFFBEB);
-        sun.intensity = 1.7; hemi.intensity = 0.65;
-        intLight.intensity = 0; signLight.intensity = 0;
-      } else if (sp < 0.75) {
-        const t3 = (sp - 0.50) / 0.25;
-        sun.position.set(0, 28, 0); sun.color.setHex(0xFFFFFF);
-        sun.intensity = THREE.MathUtils.lerp(1.7, 2.2, t3); hemi.intensity = 0.70;
-        intLight.intensity = 0; signLight.intensity = 0;
-      } else {
-        const t4 = (sp - 0.75) / 0.25;
-        sun.position.set(-10, 10, 8); sun.color.setHex(0xF97316);
-        sun.intensity = THREE.MathUtils.lerp(1.3, 0.5, t4); hemi.intensity = 0.45;
-        intLight.intensity  = THREE.MathUtils.lerp(0, 2.2, t4);
-        signLight.intensity = THREE.MathUtils.lerp(0, 1.4, t4);
+      if (subBeat !== prevSubBeat) {
+        mascot.setMood(MASCOT_MOODS[subBeat]);
+        prevSubBeat = subBeat;
       }
 
-      // ── PV panel scale (Beat 3: 0.52→0.68) ─────────────────────────────
-      const pvScale = THREE.MathUtils.clamp(smoothstep(sp, 0.52, 0.68), 0, 1);
-      [shops.pvGroupConveksi, shops.pvGroupLaundry].forEach((pvG) => {
-        pvG.children.forEach((c) => {
-          if (c instanceof THREE.Group) {
-            c.visible = pvScale > 0.01;
-            c.scale.setScalar(pvScale);
-          }
-        });
+      // ── Mascot rotation: face the camera roughly ─────────────────
+      const faceDir = new THREE.Vector3(
+        camera.position.x - currentMascotPos.x,
+        0,
+        camera.position.z - currentMascotPos.z,
+      );
+      if (faceDir.lengthSq() > 0.01) {
+        const angle = Math.atan2(faceDir.x, faceDir.z);
+        mascot.refs.root.rotation.y += (angle - mascot.refs.root.rotation.y) * 0.08;
+      }
+
+      // ── Meter LED animations ─────────────────────────────────────
+      function updateMeter(
+        indMesh: THREE.Mesh,
+        fixed: boolean,
+      ): void {
+        const m = indMesh.material as THREE.MeshStandardMaterial;
+        if (fixed) {
+          m.color.setHex(0x2FBF71);
+          m.emissive.setHex(0x2FBF71);
+          m.emissiveIntensity = 2.0;
+        } else {
+          m.color.setHex(0xEF4444);
+          m.emissive.setHex(0xEF4444);
+          m.emissiveIntensity = Math.sin(time * 8) > 0 ? 2.8 : 0.4;
+        }
+      }
+      updateMeter(shops.meterInd1, sp >= 0.28);
+      updateMeter(shops.meterInd2, sp >= 0.52);
+      updateMeter(shops.meterInd3, sp >= 0.76);
+
+      // ── PV panel emergence ───────────────────────────────────────
+      const pv1Scale = smoothstep(sp, 0.28, 0.42);
+      const pv2Scale = smoothstep(sp, 0.52, 0.65);
+      const pv3Scale = smoothstep(sp, 0.76, 0.88);
+      shops.pvGroup1.scale.set(1, pv1Scale, 1);
+      shops.pvGroup2.scale.set(1, pv2Scale, 1);
+      shops.pvGroup3.scale.set(1, pv3Scale, 1);
+
+      // ── Truck loop animation ─────────────────────────────────────
+      env.truckRef.position.x = ((time * 2.5) % 36) - 18;
+      env.truckRef.position.y = Math.sin(time * 16) * 0.015;
+
+      // ── Drum rotation (laundry) ──────────────────────────────────
+      for (const c of shops.drumGroup.children) {
+        const data = c.userData as { drumCenter?: THREE.Vector3; drumAngle?: number };
+        if (data.drumCenter && data.drumAngle !== undefined) {
+          data.drumAngle += delta * 1.2;
+          c.position.set(
+            data.drumCenter.x + Math.cos(data.drumAngle) * 0.12,
+            data.drumCenter.y + Math.sin(data.drumAngle) * 0.12,
+            data.drumCenter.z,
+          );
+        }
+      }
+
+      // ── Particles ────────────────────────────────────────────────
+      tickParticles(cables.particles, delta, sp);
+      const geo = (cables.particles as unknown as Record<string, unknown>);
+      const pointsMesh = cables.group.children.find(
+        (c) => c instanceof THREE.Points,
+      ) as THREE.Points | undefined;
+      if (pointsMesh) {
+        (pointsMesh.geometry.getAttribute('position') as THREE.BufferAttribute).array.set(cables.particles.pts);
+        (pointsMesh.geometry.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
+      }
+
+      // ── Sunset lighting in Act 5 ─────────────────────────────────
+      if (sp > 0.88) {
+        const st = smoothstep(sp, 0.88, 1.0);
+        sun.color.setRGB(lerp(1.0, 1.0, st), lerp(0.96, 0.75, st), lerp(0.88, 0.45, st));
+        hemi.color.setRGB(lerp(1.0, 1.0, st), lerp(0.96, 0.82, st), lerp(0.88, 0.60, st));
+        (scene.background as THREE.Color).setRGB(
+          lerp(0.98, 0.99, st), lerp(0.976, 0.90, st), lerp(0.957, 0.80, st),
+        );
+      } else {
+        sun.color.setHex(0xFFF5E0);
+        hemi.color.setHex(0xFFF4E0);
+        (scene.background as THREE.Color).setHex(0xFBF9F4);
+      }
+
+      // ── Card overlay opacity ────────────────────────────────────
+      overlayRef.current.forEach((el, i) => {
+        if (!el) return;
+        const [s, e] = CARD_RANGES[i];
+        const op = beatOpacity(sp, s, e, 0.04);
+        el.style.opacity = String(op);
+        el.style.pointerEvents = op > 0.5 ? 'auto' : 'none';
       });
 
-      // ── Drum rotation (Beat 3+) ──────────────────────────────────────────
-      if (sp > 0.5) {
-        shops.drumGroup.children.forEach((c) => {
-          const data = c.userData as { drumCenter?: THREE.Vector3; drumAngle?: number };
-          if (data.drumCenter && data.drumAngle !== undefined) {
-            data.drumAngle += delta * 1.2;
-            (c as THREE.Object3D).position.set(
-              data.drumCenter.x + Math.cos(data.drumAngle) * 0.12,
-              data.drumCenter.y + Math.sin(data.drumAngle) * 0.12,
-              data.drumCenter.z,
-            );
-          }
-        });
+      // CTA button in beat 4
+      if (ctaRef.current) {
+        const ctaOp = smoothstep(sp, 0.90, 1.0);
+        ctaRef.current.style.opacity = String(ctaOp);
+        ctaRef.current.style.pointerEvents = ctaOp > 0.3 ? 'auto' : 'none';
       }
 
-      // ── Truck vibration ─────────────────────────────────────────────────
-      env.truckRef.position.y = Math.sin(time * 12) * 0.015;
-
-      // ── Mascot ──────────────────────────────────────────────────────────
-      let newMood: 'idle' | 'shocked' | 'scanning' | 'happy';
-      let targetPos: THREE.Vector3;
-      if      (sp < 0.25) { newMood = 'shocked';  targetPos = beat1Pos; }
-      else if (sp < 0.50) { newMood = 'scanning'; targetPos = beat2Pos; }
-      else if (sp < 0.75) { newMood = 'happy';    targetPos = beat3Pos; }
-      else                { newMood = 'idle';     targetPos = beat4Pos; }
-
-      if (mascot._mood !== newMood) { mascot.setMood(newMood); mascot._mood = newMood; }
-      mascot.refs.root.position.lerp(targetPos, 0.035);
-      if (sp > 0.75) mascot.setPointer(mouse.x, mouse.y);
+      // ── Update mascot ────────────────────────────────────────────
       mascot.update(delta, time);
 
-      // ── Particles ───────────────────────────────────────────────────────
-      const { mat: pMat, curves, ts, speeds, curveIdx, TOTAL, pts } = cables.particles;
-      const pAttr = pts.geometry.getAttribute('position') as THREE.BufferAttribute;
-
-      if (sp < 0.25) {
-        pMat.color.setHex(0xEF4444);
-        pMat.opacity = 0.7 + Math.abs(Math.sin(time * 14)) * 0.25;
-        pMat.size = 0.22;
-      } else if (sp < 0.50) {
-        pMat.color.setHex(0x00F0FF); pMat.opacity = 0.95; pMat.size = 0.22;
-      } else if (sp < 0.75) {
-        pMat.color.setHex(sp < 0.625 ? 0xF59E0B : 0x22C55E); pMat.opacity = 0.95; pMat.size = 0.24;
-      } else {
-        pMat.color.setHex(0x34D399); pMat.opacity = 0.75; pMat.size = 0.20;
-      }
-
-      for (let i = 0; i < TOTAL; i++) {
-        ts[i] += speeds[i] * delta;
-        if (ts[i] > 1.0) ts[i] -= 1.0;
-        const ci = curveIdx[i];
-        const pt = curves[ci].getPoint(ts[i]);
-        pAttr.setXYZ(i, pt.x, pt.y, pt.z);
-      }
-      pAttr.needsUpdate = true;
-
-      // ── Overlays ─────────────────────────────────────────────────────────
-      BEAT_RANGES.forEach(([s, e], obi) => {
-        const op  = beatOpacity(sp, s, e);
-        const el  = overlayRefs.current[obi];
-        if (el) { el.style.opacity = String(op); el.style.pointerEvents = op > 0.3 ? 'auto' : 'none'; }
+      // ── Dot nav ───────────────────────────────────────────────────
+      const dots = document.querySelectorAll<HTMLElement>('[data-beat-dot]');
+      dots.forEach((d, i) => {
+        const active = subBeat >= i * 2 && subBeat < (i + 1) * 2;
+        d.style.background = active ? 'var(--eco-primary)' : 'rgba(255,255,255,0.4)';
+        d.style.transform = active ? 'scale(1.3)' : 'scale(1)';
       });
-      if (ctaRef.current)   ctaRef.current.style.opacity   = String(beatOpacity(sp, 0.75, 1.00));
-      if (blendRef.current) blendRef.current.style.opacity = String(THREE.MathUtils.clamp((sp - 0.92) / 0.08, 0, 1));
 
       renderer.render(scene, camera);
     }
-    animate();
 
-    // ── Resize ───────────────────────────────────────────────────────────────
-    function onResize() {
-      if (!canvas) return;
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      aspect = w / h;
-      d = w < 640 ? 7.5 : D_BASE;
-      renderer.setSize(w, h, false);
-      camera.left = -d * aspect; camera.right = d * aspect;
-      camera.top = d; camera.bottom = -d;
-      camera.updateProjectionMatrix();
-    }
-    const ro = new ResizeObserver(onResize);
-    ro.observe(canvas);
+    animate();
 
     return () => {
       cancelAnimationFrame(animId);
-      window.removeEventListener('scroll', updateRaw);
-      canvas.removeEventListener('mousemove', onMouse);
+      window.removeEventListener('scroll', onScroll);
       ro.disconnect();
       renderer.dispose();
-      canvas.innerHTML = '';
+      if (canvas.contains(renderer.domElement)) canvas.removeChild(renderer.domElement);
     };
   }, []);
 
   return (
-    <div ref={mountRef} className="relative w-full h-screen">
-      {/* Story beat overlays */}
+    <div ref={mountRef} className="relative w-full h-full" style={{ overflow: 'hidden' }}>
+      {/* Story card overlays — vertically centred on the left */}
       {STORY_BEATS.map((beat, i) => (
         <div
           key={i}
-          ref={(el) => { overlayRefs.current[i] = el; }}
-          className="absolute left-6 md:left-10 bottom-28 md:bottom-20 max-w-xs md:max-w-sm pointer-events-none"
-          style={{ opacity: i === 0 ? 1 : 0, transition: 'opacity 0.1s' }}
+          ref={(el) => { overlayRef.current[i] = el; }}
+          className="absolute left-6 md:left-10 top-1/2 -translate-y-1/2 max-w-xs md:max-w-sm pointer-events-none"
+          style={{ opacity: i === 0 ? 1 : 0, transition: 'opacity 0.3s ease', zIndex: 20 }}
         >
           <div
-            className="rounded-2xl p-5 md:p-6"
+            className="rounded-2xl px-5 py-4 md:px-6 md:py-5"
             style={{
-              background: 'rgba(251,249,244,0.88)',
-              backdropFilter: 'blur(14px)',
-              WebkitBackdropFilter: 'blur(14px)',
-              border: '1.5px solid rgba(232,226,213,0.6)',
-              boxShadow: '0 8px 32px -8px rgba(31,41,55,0.14)',
+              background: 'rgba(255,255,255,0.88)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.6)',
+              boxShadow: '0 8px 32px -8px rgba(0,0,0,0.12)',
             }}
           >
             <span
-              className="kicker block mb-2 text-xs font-bold tracking-widest uppercase"
+              className="inline-block text-xs font-bold tracking-widest uppercase mb-2"
               style={{ color: beat.kickerColor }}
             >
               {beat.kicker}
             </span>
-            <h2
-              className="text-xl md:text-2xl font-bold leading-snug mb-2 whitespace-pre-line"
+            <p
+              className="font-bold text-base md:text-lg leading-snug mb-2 whitespace-pre-line"
               style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)' }}
             >
               {beat.heading}
-            </h2>
+            </p>
             <p
-              className="text-sm leading-relaxed"
+              className="text-xs md:text-sm leading-relaxed"
               style={{ color: 'var(--metal-mid)' }}
             >
               {beat.subtitle}
             </p>
+            {beat.cta && (
+              <button
+                ref={ctaRef}
+                onClick={() => document.getElementById('simulator-section')?.scrollIntoView({ behavior: 'smooth' })}
+                className="mt-4 w-full px-4 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, var(--solar-primary) 0%, var(--eco-primary) 100%)',
+                  color: '#fff',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  boxShadow: '0 4px 16px -4px rgba(255,167,38,0.4)',
+                }}
+              >
+                Hitung Potensi Tokomu ↓
+              </button>
+            )}
           </div>
         </div>
       ))}
 
-      {/* CTA button (Beat 4) */}
-      <button
-        ref={ctaRef}
-        onClick={() => {
-          document.getElementById('simulator-section')?.scrollIntoView({ behavior: 'smooth' });
-        }}
-        className="absolute right-6 md:right-10 bottom-20 md:bottom-14 px-6 py-3 rounded-full font-semibold text-white text-sm transition-all duration-200 hover:scale-105 active:scale-95"
-        style={{
-          opacity: 0,
-          background: 'var(--solar-primary)',
-          boxShadow: '0 8px 24px -4px rgba(255,158,44,0.45)',
-          fontFamily: 'var(--font-display)',
-        }}
+      {/* Beat dot navigation (right side) */}
+      <div
+        className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 flex flex-col gap-2.5"
+        style={{ zIndex: 20 }}
       >
-        Coba Simulasi Tokomu ↓
-      </button>
-
-      {/* Dot navigation */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2.5">
         {STORY_BEATS.map((_, i) => (
-          <button
+          <div
             key={i}
-            onClick={() => {
-              const track = document.getElementById('scroll-track');
-              if (!track) return;
-              const max = track.offsetHeight - window.innerHeight;
-              const target = max * (i * 0.25 + 0.05);
-              window.scrollTo({ top: target, behavior: 'smooth' });
+            data-beat-dot={i}
+            className="rounded-full transition-all"
+            style={{
+              width: 8, height: 8,
+              background: i === 0 ? 'var(--eco-primary)' : 'rgba(255,255,255,0.4)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              transition: 'background 0.3s, transform 0.2s',
             }}
-            className="w-2 h-2 rounded-full border border-current transition-all"
-            style={{ color: 'var(--metal-light)' }}
-            aria-label={`Beat ${i + 1}`}
           />
         ))}
       </div>
-
-      {/* Bottom blend */}
-      <div
-        ref={blendRef}
-        className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
-        style={{
-          opacity: 0,
-          background: 'linear-gradient(to bottom, transparent, var(--bg-paper))',
-        }}
-      />
     </div>
   );
 }
