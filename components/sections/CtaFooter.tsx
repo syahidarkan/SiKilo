@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { ArrowRight, ArrowUp, UserPlus, Zap } from 'lucide-react';
 import { DASHBOARD_URL, REGISTER_URL } from '@/lib/waskita';
 import Reveal from '@/components/Reveal';
+import { LogoMark } from '@/components/Logo';
 
 const EXPLORE_LINKS = [
   { label: 'Cerita', href: '#sehari' },
@@ -57,7 +58,7 @@ export default function CtaFooter() {
             <div className="sf-grid">
               <div>
                 <a className="sf-brand" href="#top">
-                  <span className="sf-mark"><Zap size={16} fill="currentColor" /></span>
+                  <LogoMark size={40} />
                   WASKITA
                 </a>
                 <p className="sf-tag">Membaca listrik tiap mesin, menggeser jadwalnya ke jam matahari, dan menyiapkan rapor untuk bank.</p>

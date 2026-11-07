@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LogIn, Menu, Moon, Sun, X, Zap } from 'lucide-react';
+import { LogIn, Menu, Moon, Sun, X } from 'lucide-react';
 import { DASHBOARD_URL } from '@/lib/waskita';
+import { LogoMark } from '@/components/Logo';
 
 const NAV_LINKS = [
   { label: 'Cerita', id: 'sehari' },
@@ -83,9 +84,7 @@ export default function Navbar() {
     <header ref={headerRef} className={`nav ${scrolled || menuOpen ? 'nav-solid' : ''}`}>
       <nav className="nav-bar" aria-label="Navigasi utama">
         <a href="#top" className="nav-logo" onClick={() => setMenuOpen(false)}>
-          <span className="nav-mark">
-            <Zap size={17} strokeWidth={2.6} fill="currentColor" />
-          </span>
+          <LogoMark size={38} className="nav-mark" />
           <span className="nav-word">
             WAS<span>KITA</span>
           </span>
