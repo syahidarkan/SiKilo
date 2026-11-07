@@ -31,6 +31,7 @@ class UMKMProfileOut(BaseModel):
     pv_kwp: float
     battery_kwh: float
     consent_share_data: bool
+    consent_share_gov: bool = False
 
 
 class PlanSummary(BaseModel):
@@ -59,7 +60,7 @@ class ApplianceEnergy(BaseModel):
 
 
 class RaporSummary(BaseModel):
-    status: Literal["ok", "belum_ada_data", "gagal"]
+    status: Literal["ok", "belum_ada_data", "gagal", "diproses"]
     data_days: int
     min_data_days: int
     monthly_kwh: Optional[float] = None
@@ -104,6 +105,12 @@ class LeadUpdate(BaseModel):
     installer_user_id: Optional[int] = Field(None, gt=0, description="Khusus admin")
     unassign: bool = Field(False, description="Khusus admin: lepas penugasan installer")
     recompute_kwp: bool = Field(False, description="Hitung ulang rekomendasi kWp dari data terbaru")
+    installed_kwp: Optional[float] = Field(
+        None, gt=0, le=1000, description="Installer/admin: kWp terpasang (wajib bersama status 'installed'); disalin ke UMKM.pv_kwp"
+    )
+    installed_battery_kwh: Optional[float] = Field(
+        None, ge=0, le=1000, description="Installer/admin: kapasitas baterai terpasang (opsional, bersama 'installed')"
+    )
 
 
 class UMKMDashboard(BaseModel):

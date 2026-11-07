@@ -251,9 +251,15 @@ def test_ledger_endpoint_access_and_granularity(client, make_user, admin_headers
     assert client.get("/api/v1/telemetry/ledger", params=params, headers=admin_headers).status_code == 422
     r = client.get("/api/v1/telemetry/ledger", params={**params, "umkm_id": owner.umkm_id}, headers=admin_headers)
     assert r.status_code == 200
+    # Disperinaker tidak membaca data rinci per UMKM (consent hanya mencakup bank/installer).
     r = client.get("/api/v1/telemetry/ledger", params={**params, "umkm_id": owner.umkm_id}, headers=disp.headers)
+    assert r.status_code == 403
+    r = client.get("/api/v1/telemetry/records", params={"umkm_id": owner.umkm_id}, headers=disp.headers)
+    assert r.status_code == 403
+    bank = make_user("bank")
+    r = client.get("/api/v1/telemetry/ledger", params={**params, "umkm_id": owner.umkm_id}, headers=bank.headers)
     assert r.status_code == 200
-    r = client.get("/api/v1/telemetry/ledger", params={**params, "umkm_id": private.umkm_id}, headers=disp.headers)
+    r = client.get("/api/v1/telemetry/ledger", params={**params, "umkm_id": private.umkm_id}, headers=bank.headers)
     assert r.status_code == 403
     bad = {"start": "2026-09-10", "end": "2026-09-01"}
     assert client.get("/api/v1/telemetry/ledger", params=bad, headers=owner.headers).status_code == 422
@@ -301,26 +307,50 @@ def test_records_endpoint(client, device):
 
 
 # ── WebSocket ───────────────────────────────────────────────────────────────
-def test_ws_requires_token(client):
+def _ws_auth(ws, token: str) -> dict:
+    ws.send_json({"type": "auth", "token": token})
+    return ws.receive_json()
+
+
+def test_ws_requires_token(client, umkm_user):
+    # Pesan pertama bukan auth → ditolak.
     with client.websocket_connect("/ws/telemetry") as ws:
+        ws.send_json({"type": "ping"})
         msg = ws.receive_json()
         assert msg["type"] == "error"
         with pytest.raises(Exception):
             ws.receive_json()
-    with client.websocket_connect("/ws/telemetry?token=palsu") as ws:
-        assert ws.receive_json()["type"] == "error"
+    with client.websocket_connect("/ws/telemetry") as ws:
+        assert _ws_auth(ws, "palsu")["type"] == "error"
+    # Token di query string tidak diterima lagi (URL tercatat di log akses).
+    with client.websocket_connect(f"/ws/telemetry?token={umkm_user.token}") as ws:
+        msg = ws.receive_json()
+        assert msg["type"] == "error" and "query" in msg["detail"]
 
 
 def test_ws_live_rejects_third_party_role(client, installer_user):
-    with client.websocket_connect(f"/ws/telemetry?token={installer_user.token}") as ws:
-        msg = ws.receive_json()
+    with client.websocket_connect("/ws/telemetry") as ws:
+        msg = _ws_auth(ws, installer_user.token)
         assert msg["type"] == "error"
+
+
+def test_ws_closes_when_user_deactivated(client, make_user, admin_headers, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "ws_auth_recheck_s", 0.2)
+    u = make_user("umkm")
+    with client.websocket_connect("/ws/telemetry") as ws:
+        assert _ws_auth(ws, u.token)["type"] == "hello"
+        r = client.patch(f"/api/v1/auth/users/{u.id}/status", json={"is_active": False}, headers=admin_headers)
+        assert r.status_code == 200
+        msg = ws.receive_json()
+        assert msg["type"] == "error" and "nonaktif" in msg["detail"]
 
 
 def test_ws_simulator_not_stored(client, umkm_user, db_call):
     before = _count(db_call, TelemetryRecord)
-    with client.websocket_connect(f"/ws/telemetry?token={umkm_user.token}&mode=simulator") as ws:
-        assert ws.receive_json()["type"] == "hello"
+    with client.websocket_connect("/ws/telemetry?mode=simulator") as ws:
+        assert _ws_auth(ws, umkm_user.token)["type"] == "hello"
         t0 = datetime(2026, 10, 7, 9, 0, tzinfo=WIB)
         for i in range(5):
             ws.send_json(_sample(t0 + timedelta(seconds=i), 300.0, with_id="SIM-1"))
@@ -336,8 +366,8 @@ def test_ws_simulator_not_stored(client, umkm_user, db_call):
 def test_ws_live_receives_broadcast(client, device):
     owner = device.owner
     subs_before = hub.subscriber_count
-    with client.websocket_connect(f"/ws/telemetry?token={owner.token}") as ws:
-        hello = ws.receive_json()
+    with client.websocket_connect("/ws/telemetry") as ws:
+        hello = _ws_auth(ws, owner.token)
         assert hello["type"] == "hello" and hello["umkm_id"] == owner.umkm_id
         body = _sample(datetime(2026, 10, 8, 9, 0, tzinfo=WIB), 555.0, with_id=device.device_id)
         assert client.post("/api/v1/telemetry/ingest", json=body, headers=device.headers).status_code == 200
@@ -356,3 +386,46 @@ def test_ws_live_receives_broadcast(client, device):
         assert got[0]["device_id"] == device.device_id
         assert got[0]["p_active"] == pytest.approx(555.0)
     assert hub.subscriber_count == subs_before
+
+
+# ── Batch: timestamp masa depan dibuang per sampel ─────────────────────────
+def test_batch_drops_only_future_samples(client, device):
+    base = datetime.now(WIB).replace(microsecond=0) - timedelta(minutes=30)
+    samples = [_sample(base + timedelta(seconds=i), 300.0) for i in range(20)]
+    future = datetime.now(timezone.utc) + timedelta(days=1)
+    samples += [_sample(future + timedelta(seconds=i), 300.0) for i in range(3)]
+    r = client.post(
+        "/api/v1/telemetry/ingest-batch",
+        json={"device_id": device.device_id, "samples": samples},
+        headers=device.headers,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["received"] == 23
+    assert body["rejected_future"] == 3
+    assert body["processed"] == 20
+    assert "masa depan" in body["message"]
+
+
+# ── Cakupan ledger: jam tanpa konsumsi tetap tercatat ──────────────────────
+def test_zero_consumption_hours_count_as_coverage(client, make_user, db_call):
+    from app.services_data.ledger import aggregate_entries, hourly_profiles
+
+    d = date(2026, 9, 20)
+    agg = aggregate_entries([
+        HourlyEnergy(d, 2, "Baseload / Background", 0.0),
+        HourlyEnergy(d, 2, "Setrika Pemanas Uap", 0.0),
+    ])
+    assert agg == {(d, 2, "Baseload / Background"): 0.0}
+
+    u = make_user("umkm")
+
+    async def write(s):
+        entries = [HourlyEnergy(d, h, "Baseload / Background", 0.0 if h < 6 else 0.4) for h in range(24)]
+        await upsert_ledger(s, u.umkm_id, entries)
+        await s.commit()
+        return await hourly_profiles(s, u.umkm_id, d, d)
+
+    profiles = db_call(write)
+    assert len(profiles) == 1 and profiles[0][0] == d
+    assert sum(profiles[0][1]) == pytest.approx(18 * 0.4)

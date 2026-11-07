@@ -11,6 +11,8 @@ Constraint (sama persis dengan aturan ``factory_model``):
 - Neraca daya per slot (W, integer):
   ``pv + grid + discharge = beban + charge + curtail`` (semua ≥ 0).
   Tanpa baterai ini setara ``grid = max(0, beban − pv)``.
+- Defisit SoC akhir hari (SoC awal − SoC akhir) dinilai sebagai biaya isi
+  ulang (tarif rata-rata ÷ η_charge), sama dengan ``simulate_schedule``.
 - Baterai (opsional, linear): SoC dalam mWh integer,
   ``soc[t] = soc[t-1] + round(250·η_c)·charge − round(250/η_d)·discharge``,
   ``soc_min ≤ soc ≤ kapasitas``, charge hanya dari PV (``charge ≤ pv``),
@@ -147,7 +149,8 @@ def solve_milp_schedule(
             k_d = int(round(SLOT_HOURS * 1000 / eta_d))
             soc_min = int(math.ceil(battery.soc_min_wh * 1000))
             soc_max = int(math.floor(battery.soc_max_wh * 1000))
-            soc_prev = int(round(battery.capacity_wh * battery.soc_init_frac * 1000))
+            soc_init = int(round(battery.capacity_wh * battery.soc_init_frac * 1000))
+            soc_prev = soc_init
             max_c = int(math.floor(battery.max_charge_w))
             max_d = int(math.floor(battery.max_discharge_w))
         for t in range(N_SLOTS):
@@ -165,6 +168,15 @@ def solve_milp_schedule(
                 model.add(pv[t] + grid == load_t + curt)
             grid_vars.append(grid)
             cost_terms.append(coef[t] * grid)
+        if battery is not None:
+            # Defisit SoC akhir hari dinilai sama seperti simulate_schedule:
+            # (SoC awal − SoC akhir) ÷ η_charge × tarif rata-rata.
+            deficit = model.new_int_var(0, max(soc_init - soc_min, 0), "soc_deficit")
+            model.add(deficit >= soc_init - soc_prev)
+            avg_tariff = float(np.mean(problem.tariff_idr_per_wh))
+            k_def = int(round(avg_tariff / 1000.0 / max(eta_c, 1e-6) * COST_SCALE))
+            if k_def > 0:
+                cost_terms.append(k_def * deficit)
 
     penalty_terms = []
     if start_penalty_idr > 0 and starts:

@@ -9,11 +9,14 @@ Dashboard multi-peran WASKITA.
 - ``GET  /dashboard/bank``          — bank / admin: rapor ringkas UMKM yang consent (read-only).
 - ``GET  /dashboard/kpi``           — semua role; cakupan data menyesuaikan role.
 
-Privasi: data per UMKM hanya tampil untuk pihak ketiga bila
-``UMKM.consent_share_data`` = True. UMKM yang tidak consent hanya dihitung
-dalam jumlah total (tanpa nama/energi). Pengecualian: lead yang DIAJUKAN
-UMKM sendiri — nama, alamat, dan WhatsApp dibagikan ke installer agar bisa
-dihubungi.
+Privasi:
+- Bank/installer melihat data per UMKM hanya bila ``consent_share_data`` = True.
+- Disperinaker melihat nama & ringkasan energi (agregat, tanpa data per jam)
+  hanya bila ``consent_share_gov`` = True; sisanya hanya dihitung di total.
+- Alamat & WhatsApp UMKM di lead hanya tampil ke installer yang SUDAH
+  ditugaskan/mengambil lead itu, dan hanya bila lead diajukan UMKM sendiri
+  (``requested_by_umkm``) atau UMKM memberi ``consent_share_data``. Lead
+  terbuka (belum diambil) tidak menampilkan kontak.
 """
 from __future__ import annotations
 
@@ -103,6 +106,20 @@ async def _consent_umkm(db: AsyncSession) -> list[UMKM]:
     return list(result.scalars())
 
 
+async def _gov_consent_umkm(db: AsyncSession) -> list[UMKM]:
+    result = await db.execute(select(UMKM).where(UMKM.consent_share_gov.is_(True)).order_by(UMKM.id))
+    return list(result.scalars())
+
+
+def _contact_visible(user: User, lead: Lead, umkm: Optional[UMKM]) -> bool:
+    """Alamat & WA hanya untuk pemilik/admin, atau installer yang menangani lead yang boleh dibagikan."""
+    if user.role in (Role.ADMIN.value, Role.UMKM.value):
+        return True
+    if user.role != Role.INSTALLER.value or umkm is None or lead.installer_user_id != user.id:
+        return False
+    return bool(lead.requested_by_umkm or umkm.consent_share_data)
+
+
 # ── UMKM ────────────────────────────────────────────────────────────────────
 @router.get("/umkm", response_model=UMKMDashboard)
 async def umkm_dashboard(
@@ -172,7 +189,7 @@ async def disperinaker_dashboard(
     end = _today()
     start = end - timedelta(days=days - 1)
     n_total = int(await db.scalar(select(func.count(UMKM.id))) or 0)
-    consent = await _consent_umkm(db)
+    consent = await _gov_consent_umkm(db)
     ids = [u.id for u in consent]
     totals = await totals_by_umkm(db, ids, start, end)
     plans = await kpi.latest_plans(db, ids, start, end)
@@ -248,7 +265,8 @@ async def disperinaker_dashboard(
         },
         umkm=items,
         notes=[
-            "Hanya UMKM yang memberi persetujuan berbagi data yang dirinci; sisanya hanya dihitung di n_umkm_total.",
+            "Hanya UMKM yang memberi persetujuan berbagi data ke Disperinaker (consent_share_gov) yang dirinci; "
+            "sisanya hanya dihitung di n_umkm_total. Data per jam/per mesin tidak dibagikan ke dinas.",
             "Potensi hemat = rata-rata penghematan harian rencana agen × 30 (estimasi tiruan digital).",
             "kWh per UMKM berasal dari buku energi perangkat WASKITA, bukan tagihan PLN.",
         ],
@@ -298,6 +316,7 @@ async def create_lead(
         status="new",
         recommended_kwp=kwp,
         notes=notes,
+        requested_by_umkm=not is_admin,
     )
     db.add(lead)
     await db.commit()
@@ -327,7 +346,7 @@ async def list_leads(
         stmt = stmt.where(Lead.status == status_filter)
     stmt = stmt.order_by(Lead.updated_at.desc(), Lead.id.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
-    return [_lead_out(lead, umkm, with_contact=True) for lead, umkm in rows]
+    return [_lead_out(lead, umkm, with_contact=_contact_visible(user, lead, umkm)) for lead, umkm in rows]
 
 
 @router.patch("/leads/{lead_id}", response_model=LeadOut)
@@ -367,8 +386,19 @@ async def update_lead(
                 raise HTTPException(422, "installer_user_id bukan installer aktif")
             lead.installer_user_id = inst.id
 
+    if (req.installed_kwp is not None or req.installed_battery_kwh is not None) and user.role == Role.UMKM.value:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Data pemasangan hanya diisi installer/admin")
+    if req.installed_kwp is not None or req.installed_battery_kwh is not None:
+        if (req.status or lead.status) != "installed":
+            raise HTTPException(422, "installed_kwp/installed_battery_kwh hanya bersama status 'installed'")
+    if req.status == "installed" and lead.status != "installed" and req.installed_kwp is None:
+        raise HTTPException(422, "Isi installed_kwp (kWp terpasang) saat menandai lead 'installed'")
     if req.status is not None:
         lead.status = req.status
+    if umkm is not None and req.installed_kwp is not None:
+        umkm.pv_kwp = float(req.installed_kwp)
+        if req.installed_battery_kwh is not None:
+            umkm.battery_kwh = float(req.installed_battery_kwh)
     if req.notes is not None:
         lead.notes = req.notes
     if req.recompute_kwp and umkm is not None:
@@ -378,7 +408,9 @@ async def update_lead(
     lead.updated_at = utcnow()
     await db.commit()
     await db.refresh(lead)
-    return _lead_out(lead, umkm, with_contact=True)
+    if umkm is not None:
+        await db.refresh(umkm)
+    return _lead_out(lead, umkm, with_contact=_contact_visible(user, lead, umkm))
 
 
 # ── Bank / koperasi ─────────────────────────────────────────────────────────
@@ -392,8 +424,15 @@ async def bank_dashboard(
     consent = await _consent_umkm(db)
     today = _today()
     items: list[BankUMKMItem] = []
+    # Hanya beberapa rapor BARU yang dihitung sinkron per permintaan; sisanya
+    # dihitung di latar belakang (status "diproses") agar satu permintaan
+    # tidak memicu ratusan perhitungan sizing.
+    sync_budget = max(0, int(settings.bank_dashboard_max_sync_compute))
     for u in consent[offset: offset + limit]:
-        summary = await rapor.rapor_summary(db, u, today)
+        was_cached = rapor.is_cached(u.id)
+        summary = await rapor.rapor_summary(db, u, today, wait=sync_budget > 0)
+        if not was_cached and summary["status"] != "belum_ada_data":
+            sync_budget -= 1
         items.append(
             BankUMKMItem(
                 umkm_id=u.id,
@@ -412,6 +451,7 @@ async def bank_dashboard(
             "Hanya UMKM yang memberi persetujuan berbagi data.",
             "Read-only. Skor & PBP adalah perkiraan otomatis dari data perangkat (30 hari terakhir), "
             "belum divalidasi auditor energi.",
+            "Status 'diproses' = rapor sedang dihitung di latar belakang; muat ulang beberapa saat lagi.",
         ],
     )
 
@@ -430,6 +470,9 @@ async def kpi_board(
     elif user.role == Role.UMKM.value:
         ids = [user.umkm_id] if user.umkm_id is not None else []
         scope = "UMKM Anda"
+    elif user.role == Role.DISPERINAKER.value:
+        ids = [u.id for u in await _gov_consent_umkm(db)]
+        scope = "UMKM yang memberi persetujuan berbagi data ke Disperinaker"
     else:
         ids = [u.id for u in await _consent_umkm(db)]
         scope = "UMKM yang memberi persetujuan berbagi data"

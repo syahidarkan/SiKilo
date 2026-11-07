@@ -1,7 +1,14 @@
 """
 WebSocket ``/ws/telemetry`` — kanal LIVE dashboard WASKITA.
 
-Sambung: ``ws://<host>/ws/telemetry?token=<JWT>&mode=live|simulator[&umkm_id=N]``
+Sambung: ``ws://<host>/ws/telemetry?mode=live|simulator[&umkm_id=N]`` lalu kirim
+pesan PERTAMA ``{"type": "auth", "token": "<JWT>"}`` (dalam
+``settings.ws_auth_timeout_s`` detik). Token TIDAK diterima di query string
+karena URL lengkap (termasuk query) tercatat di log akses server/proxy.
+
+Selama tersambung, masa berlaku token & status akun dicek ulang tiap
+``settings.ws_auth_recheck_s`` detik; token kedaluwarsa → ditutup 4401, akun
+dinonaktifkan → ditutup 4403.
 
 - ``mode=live`` (default): server menyiarkan hasil ingest perangkat
   (``type: "telemetry"``, ``simulated: false``) untuk UMKM pengguna.
@@ -13,13 +20,15 @@ Sambung: ``ws://<host>/ws/telemetry?token=<JWT>&mode=live|simulator[&umkm_id=N]`
   TIDAK disimpan / tidak masuk ledger.
 - ``{"type": "ping"}`` → ``{"type": "pong"}``.
 
-Kode penutupan: 4401 token tidak ada/tidak valid, 4403 tidak berhak, 1009 pesan terlalu besar.
+Kode penutupan: 4401 token tidak ada/tidak valid/kedaluwarsa, 4403 tidak berhak atau akun
+dinonaktifkan, 1009 pesan terlalu besar.
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import time
 from datetime import datetime
 from typing import Any, Optional
 
@@ -28,6 +37,7 @@ from jose import JWTError
 from pydantic import ValidationError
 
 from app.core.auth import decode_access_token, get_user_by_username
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models import Role, User
 from app.schemas.telemetry import TelemetrySampleIn, local_tz
@@ -42,23 +52,65 @@ MAX_MESSAGE_BYTES = 8 * 1024
 LIVE_ROLES = (Role.UMKM.value, Role.ADMIN.value)
 
 
-async def _authenticate(token: Optional[str]) -> tuple[Optional[User], Optional[tuple[int, str]]]:
+async def _authenticate(
+    token: Optional[str],
+) -> tuple[Optional[User], Optional[float], Optional[tuple[int, str]]]:
+    """(user, exp epoch, galat)."""
     if not token:
-        return None, (4401, "Token wajib diisi (query ?token=)")
+        return None, None, (4401, 'Token wajib dikirim sebagai pesan pertama {"type":"auth","token":"..."}')
     try:
         payload = decode_access_token(token)
     except JWTError:
-        return None, (4401, "Token tidak valid atau kedaluwarsa")
+        return None, None, (4401, "Token tidak valid atau kedaluwarsa")
     username = payload.get("sub")
     if not username:
-        return None, (4401, "Token tidak valid")
+        return None, None, (4401, "Token tidak valid")
     async with AsyncSessionLocal() as db:
         user = await get_user_by_username(db, username)
     if user is None:
-        return None, (4401, "Pengguna tidak ditemukan")
+        return None, None, (4401, "Pengguna tidak ditemukan")
     if not user.is_active:
-        return None, (4403, "Akun dinonaktifkan")
-    return user, None
+        return None, None, (4403, "Akun dinonaktifkan")
+    exp = payload.get("exp")
+    return user, (float(exp) if isinstance(exp, (int, float)) else None), None
+
+
+async def _receive_auth_token(websocket: WebSocket) -> tuple[Optional[str], Optional[tuple[int, str]]]:
+    """Tunggu pesan pertama ``{"type":"auth","token":...}``."""
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=settings.ws_auth_timeout_s)
+    except asyncio.TimeoutError:
+        return None, (4401, "Waktu habis menunggu pesan auth")
+    if len(raw.encode("utf-8")) > MAX_MESSAGE_BYTES:
+        return None, (1009, "Pesan terlalu besar")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        data = None
+    if not isinstance(data, dict) or data.get("type") != "auth" or not isinstance(data.get("token"), str):
+        return None, (4401, 'Pesan pertama harus {"type":"auth","token":"<JWT>"}')
+    return data["token"], None
+
+
+async def _watchdog(websocket: WebSocket, user_id: int, username: str, exp: Optional[float]) -> None:
+    """Tutup koneksi saat token kedaluwarsa atau akun dinonaktifkan/dihapus."""
+    interval = max(float(settings.ws_auth_recheck_s), 0.05)
+    while True:
+        wait = interval
+        if exp is not None:
+            wait = max(min(interval, exp - time.time()), 0.0)
+        await asyncio.sleep(wait)
+        if exp is not None and time.time() >= exp:
+            await _reject(websocket, 4401, "Token kedaluwarsa; sambung ulang dengan token baru")
+            return
+        async with AsyncSessionLocal() as db:
+            user = await get_user_by_username(db, username)
+        if user is None or user.id != user_id:
+            await _reject(websocket, 4401, "Pengguna tidak ditemukan")
+            return
+        if not user.is_active:
+            await _reject(websocket, 4403, "Akun dinonaktifkan")
+            return
 
 
 def _live_scope(user: User, umkm_id: Optional[int]) -> tuple[Optional[int], Optional[tuple[int, str]]]:
@@ -100,7 +152,18 @@ async def ws_telemetry(websocket: WebSocket) -> None:
         await _reject(websocket, 1008, "mode harus 'live' atau 'simulator'")
         return
 
-    user, err = await _authenticate(params.get("token"))
+    if params.get("token"):
+        await _reject(
+            websocket, 4401,
+            'Token di query string tidak diterima (tercatat di log). Kirim {"type":"auth","token":"..."} '
+            "sebagai pesan pertama.",
+        )
+        return
+    token, err = await _receive_auth_token(websocket)
+    if err:
+        await _reject(websocket, *err)
+        return
+    user, exp, err = await _authenticate(token)
     if err:
         await _reject(websocket, *err)
         return
@@ -117,6 +180,7 @@ async def ws_telemetry(websocket: WebSocket) -> None:
 
     sim_disagg = None
     sender: Optional[asyncio.Task] = None
+    watchdog: Optional[asyncio.Task] = asyncio.create_task(_watchdog(websocket, user.id, user.username, exp))
     try:
         if mode == "live":
             sub = hub.subscribe(umkm_scope)
@@ -182,10 +246,12 @@ async def ws_telemetry(websocket: WebSocket) -> None:
             pass
     finally:
         hub.unsubscribe(sub)
-        if sender is not None:
-            sender.cancel()
+        for task in (sender, watchdog):
+            if task is None:
+                continue
+            task.cancel()
             try:
-                await sender
+                await task
             except (asyncio.CancelledError, Exception):  # noqa: BLE001
                 pass
 

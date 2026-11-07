@@ -16,6 +16,16 @@ W/m² selama jam tersebut) dan ``T2M`` (suhu udara 2 m, °C).
 
 Bila data tidak tersedia, fungsi di sini mengembalikan ``None`` dan
 ``solar_engine`` memakai fallback clear-sky × indeks kecerahan.
+
+Perlindungan sumber daya (koordinat datang dari input pengguna):
+- unduhan hanya untuk koordinat di kotak wilayah Indonesia
+  (``settings.weather_lat_*``/``weather_lon_*``); di luar itu → fallback;
+- kunci per (lokasi, tahun): unduhan satu lokasi tidak memblokir lokasi lain
+  (tidak ada lock global selama I/O jaringan), dan permintaan bersamaan untuk
+  lokasi yang sama hanya mengunduh sekali;
+- cache memori LRU (``settings.weather_memory_cache_max`` entri);
+- unduhan lokasi BARU dibatasi ``settings.weather_max_new_fetches_per_hour``
+  per proses.
 """
 from __future__ import annotations
 
@@ -26,6 +36,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -167,9 +178,36 @@ class WeatherProvider:
         self._allow_network_override = allow_network
         self.timeout_s = timeout_s if timeout_s is not None else settings.nasa_power_timeout_s
         self._http_get_json = http_get_json or _default_http_get_json
-        self._years: dict[str, dict] = {}
+        self._years: "OrderedDict[str, dict]" = OrderedDict()
         self._failed_at: dict[str, float] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()              # hanya melindungi struktur data (tanpa I/O)
+        self._key_locks: dict[str, threading.Lock] = {}
+        self._fetch_times: deque[float] = deque()
+
+    @staticmethod
+    def in_service_area(lat: float, lon: float) -> bool:
+        return (
+            settings.weather_lat_min <= float(lat) <= settings.weather_lat_max
+            and settings.weather_lon_min <= float(lon) <= settings.weather_lon_max
+        )
+
+    def _remember(self, key: str, data: dict) -> None:
+        with self._lock:
+            self._years[key] = data
+            self._years.move_to_end(key)
+            while len(self._years) > max(int(settings.weather_memory_cache_max), 1):
+                self._years.popitem(last=False)
+
+    def _take_fetch_slot(self) -> bool:
+        """Kuota unduhan lokasi baru per jam (per proses)."""
+        now = time.monotonic()
+        with self._lock:
+            while self._fetch_times and now - self._fetch_times[0] > 3600.0:
+                self._fetch_times.popleft()
+            if len(self._fetch_times) >= max(int(settings.weather_max_new_fetches_per_hour), 0):
+                return False
+            self._fetch_times.append(now)
+            return True
 
     # ── kebijakan jaringan ─────────────────────────────────────────────────
     @property
@@ -222,21 +260,37 @@ class WeatherProvider:
         """Data satu tahun dari memori → cache disk → jaringan (bila diizinkan)."""
         key = _key(lat, lon, year)
         with self._lock:
-            if key in self._years:
-                return self._years[key]
+            hit = self._years.get(key)
+            if hit is not None:
+                self._years.move_to_end(key)
+                return hit
+            key_lock = self._key_locks.setdefault(key, threading.Lock())
+        # I/O (baca file / unduh) di luar lock global; lock per kunci mencegah unduhan ganda.
+        with key_lock:
+            with self._lock:
+                hit = self._years.get(key)
+            if hit is not None:
+                return hit
             data = self._read_cache(lat, lon, year)
-            if data is None and self.network_allowed:
+            if data is None and self.network_allowed and self.in_service_area(lat, lon):
                 failed = self._failed_at.get(key)
                 if failed is None or time.monotonic() - failed > FAILURE_BACKOFF_S:
-                    try:
-                        data = self.fetch_year(lat, lon, year)
-                    except Exception as exc:  # jaringan/format: jatuh ke fallback
-                        self._failed_at[key] = time.monotonic()
-                        logger.warning("NASA POWER tidak tersedia (%s): %s", key, exc)
-                        data = None
+                    if not self._take_fetch_slot():
+                        logger.warning("Kuota unduhan NASA POWER per jam habis; %s memakai fallback.", key)
+                    else:
+                        try:
+                            data = self.fetch_year(lat, lon, year)
+                        except Exception as exc:  # jaringan/format: jatuh ke fallback
+                            with self._lock:
+                                self._failed_at[key] = time.monotonic()
+                            logger.warning("NASA POWER tidak tersedia (%s): %s", key, exc)
+                            data = None
             if data is not None:
-                self._years[key] = data
-            return data
+                self._remember(key, data)
+        with self._lock:
+            if not key_lock.locked():
+                self._key_locks.pop(key, None)
+        return data
 
     # ── API utama ──────────────────────────────────────────────────────────
     def get_day(

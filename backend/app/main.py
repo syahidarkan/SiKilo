@@ -38,6 +38,7 @@ _FEATURE_ROUTERS: tuple[tuple[str, str], ...] = (
     ("app.api.v1.endpoints_sizing", API_PREFIX),
     ("app.api.v1.endpoints_agent", API_PREFIX),
     ("app.api.v1.endpoints_dashboard", API_PREFIX),
+    ("app.api.v1.endpoints_umkm", API_PREFIX),
     ("app.api.v1.endpoints_public", API_PREFIX),
     ("app.api.v1.endpoints_ws", ""),
 )

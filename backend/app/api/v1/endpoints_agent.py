@@ -6,6 +6,15 @@ Semua endpoint butuh login. Akses data UMKM:
 - ``admin``: UMKM mana pun (``umkm_id`` wajib).
 - rapor per UMKM juga terbuka untuk ``bank``/``installer`` bila UMKM memberi
   persetujuan berbagi data (``consent_share_data``).
+
+Kirim WhatsApp manual (``send-now``) hanya ke nomor yang sudah diverifikasi
+OTP, tidak untuk UMKM yang berhenti berlangganan, dan dibatasi
+``settings.whatsapp_send_now_max_per_day`` pesan per jenis per hari.
+
+Rapor dari POST (angka kiriman pemanggil) TIDAK pernah berlabel "terukur":
+sumber beban hanya ``input_pengguna``/``simulasi`` dan rapor diberi tanda
+"Data dari pengguna – tidak diverifikasi WASKITA". Label "terukur" hanya dari
+GET (EnergyLedger perangkat WASKITA).
 """
 from __future__ import annotations
 
@@ -20,6 +29,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, require_roles
+from app.core.config import settings
 from app.core.database import get_db
 from app.models import UMKM, Role, User
 from app.services import jobs
@@ -109,8 +119,15 @@ async def send_now(
     """Kirim brief harian / nota mingguan sekarang juga (dicatat di MessageLog)."""
     req = req or SendNowRequest()
     umkm = await _owned_umkm(db, user, req.umkm_id)
-    if not umkm.phone_whatsapp:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Nomor WhatsApp UMKM belum diisi.")
+    reason = await jobs.send_block_reason(db, umkm)
+    if reason is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, reason)
+    limit = max(0, int(settings.whatsapp_send_now_max_per_day))
+    if await jobs.sends_today(db, umkm.id, req.kind) >= limit:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Batas kirim manual {limit} pesan '{req.kind}' per hari untuk UMKM ini sudah tercapai.",
+        )
     try:
         if req.kind == "daily":
             out = await jobs.run_daily_brief_for_umkm(
@@ -178,7 +195,8 @@ class ScorecardRequest(BaseModel):
     audit_period_start: Optional[date] = None
     audit_period_end: Optional[date] = None
     machine_usage: List[MachineUsageIn] = Field(default_factory=list)
-    load_data_source: Literal["terukur", "simulasi", "input_pengguna"] = "input_pengguna"
+    # "terukur" sengaja TIDAK diterima: angka di sini tidak diverifikasi WASKITA.
+    load_data_source: Literal["simulasi", "input_pengguna"] = "input_pengguna"
 
 
 _REQUIRED_SIZING = ("recommended_kwp", "capex_idr", "annual_savings_idr", "npv_idr", "payback_period_years")
@@ -201,7 +219,8 @@ def _scorecard_from_request(req: ScorecardRequest) -> dict[str, Any]:
         audit_period_start=req.audit_period_start,
         audit_period_end=req.audit_period_end,
         load_data_source=req.load_data_source,
-        bill_source="terukur" if req.load_data_source == "terukur" else "input_pengguna",
+        bill_source="input_pengguna",
+        verified=False,
     )
 
 

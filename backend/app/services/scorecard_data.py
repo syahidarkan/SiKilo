@@ -8,7 +8,11 @@ Alur ``build_scorecard_for_umkm``:
 2. Profil pemakaian per mesin = total kWh & Rp per label di periode yang sama.
 3. Sizing pola pakai saat ini: ``calculate_optimal_sizing`` (kontrak §5).
 4. kWp setelah jadwal agen: ``compare_sizing_with_agent`` (kontrak §5) dengan
-   profil mesin UMKM dan target hemat (persen) yang sama dengan hasil sizing.
+   profil mesin UMKM, beban dasar TERUKUR (median label "Baseload /
+   Background" di ledger; default config bila data kurang) dan target hemat
+   (persen) yang sama dengan hasil sizing. Beban perbandingan ini tetap model
+   (profil mesin), bukan beban terukur; rapor mencatat selisih tagihan acuan
+   model vs tagihan terukur dan bagian ini TIDAK ikut skor.
    Bila modul/profil mesin belum ada, bagian ini dikosongkan beserta catatan.
 5. ``generate_bankability_scorecard`` → dict (siap JSON/PDF).
 
@@ -86,6 +90,8 @@ def compute_agent_compare(jobs: list[Any], target_savings_pct: float, umkm_info:
         "battery_kwh": float(umkm_info.get("battery_kwh") or 0.0),
         "solver": "greedy",
     }
+    if umkm_info.get("baseload_w") is not None:
+        kwargs["baseload_w"] = float(umkm_info["baseload_w"])
     if umkm_info.get("connected_power_va"):
         kwargs["connected_power_va"] = float(umkm_info["connected_power_va"])
     fields = getattr(CompareRequest, "model_fields", {})
@@ -116,7 +122,7 @@ async def build_scorecard_for_umkm(
     include_agent_compare: bool = True,
 ) -> dict[str, Any]:
     from app.core.tariff import tariff_idr_per_kwh
-    from app.services.jobs import load_machine_profiles, local_today, profiles_to_jobs
+    from app.services.jobs import load_machine_profiles, local_today, measured_baseload_w, profiles_to_jobs
     from app.services.scorecard_generator import generate_bankability_scorecard
     from app.services_data.ledger import hourly_profiles
 
@@ -136,6 +142,7 @@ async def build_scorecard_for_umkm(
     )
 
     compare = None
+    compare_basis: Optional[str] = None
     if include_agent_compare:
         mprofiles = await load_machine_profiles(db, umkm.id)
         jobs, job_notes = profiles_to_jobs(mprofiles)
@@ -146,7 +153,22 @@ async def build_scorecard_for_umkm(
         elif target is None:
             notes.append("Sizing tidak menghasilkan penghematan positif; perbandingan dengan jadwal agen dilewati.")
         else:
-            info = {"battery_kwh": umkm.battery_kwh, "connected_power_va": umkm.connected_power_va}
+            baseload = await measured_baseload_w(db, umkm.id, end=profiles[-1][0])
+            info = {
+                "battery_kwh": umkm.battery_kwh,
+                "connected_power_va": umkm.connected_power_va,
+                "baseload_w": baseload,
+            }
+            if baseload is None:
+                compare_basis = (
+                    f"profil mesin UMKM + beban dasar asumsi {settings.default_baseload_w:.0f} W "
+                    "(data beban dasar terukur belum cukup); simulasi, bukan beban terukur"
+                )
+            else:
+                compare_basis = (
+                    f"profil mesin UMKM + beban dasar terukur {baseload:.0f} W (median ledger); "
+                    "simulasi jadwal, bukan beban terukur"
+                )
             try:
                 compare = await asyncio.wait_for(
                     asyncio.to_thread(compute_agent_compare, jobs, target, info), timeout=COMPARE_TIMEOUT_S
@@ -154,6 +176,16 @@ async def build_scorecard_for_umkm(
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Perbandingan kWp agen UMKM %s gagal: %s", umkm.id, exc)
                 notes.append(f"Perbandingan kWp dengan jadwal agen gagal dihitung ({type(exc).__name__}).")
+            if compare is not None:
+                ref = float(getattr(compare, "reference_annual_bill_idr", 0.0) or 0.0)
+                measured_annual = daily_cost * 365.0
+                if ref > 0 and measured_annual > 0:
+                    dev = (ref - measured_annual) / measured_annual * 100.0
+                    notes.append(
+                        f"Tagihan acuan model perbandingan agen Rp{ref:,.0f}/tahun vs tagihan terukur "
+                        f"Rp{measured_annual:,.0f}/tahun (selisih {dev:+.0f}%).".replace(",", ".")
+                        + (" Selisih besar: periksa profil mesin (daya, runtime, idle)." if abs(dev) > 25 else "")
+                    )
 
     return generate_bankability_scorecard(
         umkm_name=umkm.name,
@@ -170,6 +202,8 @@ async def build_scorecard_for_umkm(
         load_data_source="terukur",
         pv_data_source=str(getattr(sizing, "pv_source", "") or "") or None,
         bill_source="terukur",
+        verified=True,
+        agent_compare_basis=compare_basis,
         umkm_id=umkm.id,
         kecamatan=umkm.kecamatan,
         extra_notes=[

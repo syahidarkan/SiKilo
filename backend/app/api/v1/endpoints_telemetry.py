@@ -10,8 +10,9 @@ Dashboard (JWT):
 - ``GET /telemetry/appliances/status``  — status ON/OFF terakhir per mesin.
 - ``GET /telemetry/records``            — sampel mentah tersimpan (untuk grafik).
 
-Akses data UMKM: pemilik (role umkm), admin, atau disperinaker/installer/bank
-bila UMKM memberi persetujuan berbagi data (``consent_share_data``).
+Akses data UMKM: pemilik (role umkm), admin, atau installer/bank bila UMKM
+memberi persetujuan berbagi data (``consent_share_data``). Disperinaker tidak
+membaca data rinci (hanya agregat di /dashboard/disperinaker).
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ from app.schemas.telemetry import (
     TelemetryPayload,
     TelemetryRecordOut,
     TelemetryResponse,
+    is_too_far_future,
     local_tz,
 )
 from app.services_data.ingest import IngestResult, ingest_service, summarize_active
@@ -109,21 +111,34 @@ async def ingest_telemetry_batch(
     device: Device = Depends(get_current_device),
     db: AsyncSession = Depends(get_db),
 ) -> TelemetryBatchResponse:
-    """Kirim buffer offline (maks. 500 sampel). Sampel diurutkan menurut waktu di server."""
+    """
+    Kirim buffer offline (maks. 500 sampel). Sampel diurutkan menurut waktu di server.
+
+    Sampel bertimestamp terlalu jauh di masa depan (jam perangkat salah) dibuang
+    SATU PER SATU dan dihitung di ``rejected_future``; sampel lain tetap diproses
+    (firmware membuang seluruh batch bila mendapat 4xx).
+    """
     _ensure_same_device(device, batch.device_id)
-    res = await ingest_service.ingest(db, device, batch.samples)
+    now = datetime.now(timezone.utc)
+    valid = [s for s in batch.samples if not is_too_far_future(s.timestamp, now)]
+    rejected = len(batch.samples) - len(valid)
+    res = await ingest_service.ingest(db, device, valid)
     ts_sorted = sorted(s.timestamp for s in batch.samples)
+    msg = f"{res.processed} sampel diproses, {res.duplicates} duplikat dilewati"
+    if rejected:
+        msg += f", {rejected} sampel dibuang (timestamp masa depan; periksa NTP perangkat)"
     return TelemetryBatchResponse(
         device_id=res.device_id,
-        received=res.received,
+        received=len(batch.samples),
         processed=res.processed,
         skipped_duplicates=res.duplicates,
+        rejected_future=rejected,
         stored_records=res.stored_records,
         events=len(res.events),
         ledger_rows_written=res.ledger_rows_written,
         first_timestamp=ts_sorted[0],
         last_timestamp=ts_sorted[-1],
-        message=f"{res.processed} sampel diproses, {res.duplicates} duplikat dilewati",
+        message=msg,
     )
 
 

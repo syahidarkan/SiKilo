@@ -85,6 +85,7 @@ def sizing_dict(sizing: Any) -> Optional[dict[str, Any]]:
         return None
     capex = _num(_get(sizing, "capex_idr"))
     npv = _num(_get(sizing, "npv_idr"))
+    within = _within_connected_power(sizing)
     return {
         "capacity_kwp": _num(_get(sizing, "recommended_kwp")),
         "capex_idr": capex,
@@ -98,8 +99,10 @@ def sizing_dict(sizing: Any) -> Optional[dict[str, Any]]:
         "npv_to_capex_ratio": round(npv / capex, 3) if npv is not None and capex else None,
         "lcoe_idr_per_kwh": _num(_get(sizing, "lcoe_idr_per_kwh")),
         "co2_avoided_kg_per_year": _num(_get(sizing, "co2_avoided_kg_per_year")),
-        "permen_esdm_2_2024_compliant": bool(_get(sizing, "permen_esdm_compliant", False)),
-        "kwp_within_connected_power": _within_connected_power(sizing),
+        # Tri-state: None bila daya tersambung belum diketahui (belum diperiksa),
+        # bukan False — jangan menyatakan "tidak patuh" untuk hal yang tidak dicek.
+        "permen_esdm_2_2024_compliant": within,
+        "kwp_within_connected_power": within,
         "connected_power_kva": _num(_get(_get(sizing, "regulatory_checks"), "connected_power_kva")),
         "export_not_credited_modeled": bool(
             _get(_get(sizing, "regulatory_checks"), "export_not_credited_modeled", True)
@@ -127,7 +130,9 @@ def compare_dict(compare: Any) -> Optional[dict[str, Any]]:
     return {
         "target_monthly_savings_idr": _num(_get(compare, "target_monthly_savings_idr")),
         "target_savings_pct": _num(_get(compare, "target_savings_pct")),
+        "reference_annual_bill_idr": _num(_get(compare, "reference_annual_bill_idr")),
         "min_kwp_habit": _num(_get(compare, "min_kwp_habit")),
+        "min_kwp_habit_no_idle": _num(_get(compare, "min_kwp_habit_no_idle")),
         "min_kwp_agent": _num(_get(compare, "min_kwp_agent")),
         "kwp_reduction": _num(_get(compare, "kwp_reduction")),
         "kwp_reduction_pct": _num(_get(compare, "kwp_reduction_pct")),
@@ -221,6 +226,8 @@ def generate_bankability_scorecard(
     umkm_id: Optional[int] = None,
     kecamatan: Optional[str] = None,
     extra_notes: Iterable[str] = (),
+    verified: Optional[bool] = None,
+    agent_compare_basis: Optional[str] = None,
 ) -> dict[str, Any]:
     """
     Rapor energi & kelayakan PLTS (dict JSON-safe).
@@ -232,6 +239,12 @@ def generate_bankability_scorecard(
     target hemat yang sama dengan kebiasaan lama vs jadwal agen.
     ``load_data_source``: ``terukur`` (EnergyLedger perangkat) | ``simulasi`` |
     ``input_pengguna``.
+    ``verified``: apakah angka berasal dari data yang dibaca WASKITA sendiri
+    (default: True hanya bila ``load_data_source == "terukur"``). Rapor yang
+    tidak terverifikasi diberi tanda "Data dari pengguna – tidak diverifikasi
+    WASKITA" di JSON & PDF, dan tidak pernah berlabel terukur.
+    ``agent_compare_basis``: keterangan dasar beban perbandingan agen (dicetak
+    di rapor). Perbandingan agen TIDAK ikut skor.
     """
     prepared_date = prepared_date or date.today()
     before = sizing_dict(sizing)
@@ -264,8 +277,21 @@ def generate_bankability_scorecard(
         }
 
     agent_cmp = compare_dict(agent_compare)
+    if agent_cmp is not None:
+        agent_cmp["basis"] = agent_compare_basis or "simulasi profil mesin di tiruan digital, bukan beban terukur"
+        agent_cmp["included_in_score"] = False
     co2 = basis.get("co2_avoided_kg_per_year")
-    measured = load_data_source == "terukur"
+    if verified is None:
+        verified = load_data_source == "terukur"
+    if not verified and load_data_source == "terukur":
+        load_data_source = "input_pengguna"
+    if not verified and bill_source == "terukur":
+        bill_source = "input_pengguna"
+    measured = verified and load_data_source == "terukur"
+    verification_label = (
+        "Terverifikasi: dihitung WASKITA dari data perangkat"
+        if verified else "Data dari pengguna – tidak diverifikasi WASKITA"
+    )
     pv_src = pv_data_source or "simulasi pvlib (NASA POWER bila tersedia, jika tidak model clear-sky)"
     notes = list(extra_notes)
     if not measured:
@@ -275,8 +301,10 @@ def generate_bankability_scorecard(
     if agent_cmp is not None:
         notes.append(
             "Perbandingan kWp kebiasaan lama vs jadwal agen memakai profil mesin di tiruan digital "
-            "(simulasi), bukan hasil ukur setelah jadwal diterapkan."
+            "(simulasi), bukan hasil ukur setelah jadwal diterapkan; tidak ikut dihitung dalam skor."
         )
+    if not verified:
+        notes.insert(0, "Rapor ini disusun dari angka yang dikirim pengguna; WASKITA tidak memverifikasinya.")
     if basis.get("kwp_within_connected_power") is None:
         notes.append("Daya tersambung PLN belum diketahui; batas kWp terhadap daya tersambung belum dicek.")
 
@@ -287,6 +315,8 @@ def generate_bankability_scorecard(
             "prepared_date": prepared_date.isoformat(),
             "version": REPORT_VERSION,
             "validation_status": "belum divalidasi auditor energi",
+            "data_verified_by_waskita": bool(verified),
+            "data_verification": verification_label,
         },
         "umkm_profile": {
             "umkm_id": umkm_id,
@@ -448,6 +478,14 @@ def render_scorecard_pdf(scorecard: dict[str, Any]) -> bytes:
           f"Versi {meta.get('version', '-')} | Status: {meta.get('validation_status', '-')}", small),
         Spacer(1, 4),
     ]
+    if not meta.get("data_verified_by_waskita", False):
+        warn = ParagraphStyle("warn", parent=body, fontSize=10, leading=13, textColor=colors.HexColor("#b91c1c"),
+                              borderColor=colors.HexColor("#b91c1c"), borderWidth=1, borderPadding=4,
+                              backColor=colors.HexColor("#fef2f2"))
+        story.append(P(
+            f"{meta.get('data_verification') or 'Data dari pengguna – tidak diverifikasi WASKITA'}. "
+            "Angka beban & tagihan berasal dari pemanggil, bukan dari perangkat WASKITA.", warn))
+        story.append(Spacer(1, 6))
 
     # 1. Profil UMKM & periode audit
     story.append(P("1. Profil UMKM & periode data", h2))
@@ -509,6 +547,8 @@ def render_scorecard_pdf(scorecard: dict[str, Any]) -> bytes:
         ], [0.2 * W] * 5))
         if cmp_.get("headline"):
             story.append(P(cmp_["headline"], small))
+        if cmp_.get("basis"):
+            story.append(P(f"Dasar beban perbandingan: {cmp_['basis']}. Tidak ikut dihitung dalam skor.", small))
     elif not aft:
         story.append(P("Rekomendasi kWp setelah jadwal agen belum tersedia untuk rapor ini.", small))
 

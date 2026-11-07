@@ -100,11 +100,15 @@ Sampel mentah tersimpan (sudah di-downsample) untuk grafik daya.
 ## 4. WebSocket `/ws/telemetry`
 
 ```
-ws://<host>/ws/telemetry?token=<JWT>&mode=live|simulator[&umkm_id=N]
+ws://<host>/ws/telemetry?mode=live|simulator[&umkm_id=N]
 ```
-- Token wajib (query param, karena browser tidak bisa mengirim header di WebSocket).
+- Setelah tersambung, kirim pesan PERTAMA `{"type":"auth","token":"<JWT>"}` dalam
+  `WS_AUTH_TIMEOUT_S` detik. Token di query string (`?token=`) DITOLAK karena URL
+  lengkap tercatat di log akses server/proxy.
   Gagal → pesan `{"type":"error"}` lalu ditutup dengan kode 4401/4403.
-- Pesan pertama: `{"type":"hello","mode":..., "umkm_id":..., "role":...}`.
+- Token & status akun dicek ulang tiap `WS_AUTH_RECHECK_S` detik: token kedaluwarsa → 4401,
+  akun dinonaktifkan → 4403.
+- Pesan pertama dari server setelah auth: `{"type":"hello","mode":..., "umkm_id":..., "role":...}`.
 - `mode=live` (default; role umkm/admin): menerima siaran
   `{"type":"telemetry","simulated":false,"device_id","umkm_id","timestamp","p_active",
   "q_reactive","v_rms","i_rms","frequency","active_appliances","baseload_w","detected_event",
@@ -118,7 +122,8 @@ ws://<host>/ws/telemetry?token=<JWT>&mode=live|simulator[&umkm_id=N]
 
 Contoh JavaScript:
 ```js
-const ws = new WebSocket(`${WS_BASE}/ws/telemetry?token=${token}`);
+const ws = new WebSocket(`${WS_BASE}/ws/telemetry?mode=live`);
+ws.onopen = () => ws.send(JSON.stringify({type: 'auth', token}));
 ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.type === 'telemetry') render(m); };
 ```
 

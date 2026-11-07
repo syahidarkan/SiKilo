@@ -261,7 +261,19 @@ def test_ensure_umkm_access(umkm_user, db_call):
 
 
 # ── Perangkat ───────────────────────────────────────────────────────────────
-def test_device_registration_returns_key_once(client, installer_user, umkm_user, db_call):
+def _assign_lead(client, admin_headers, umkm_id: int, installer_id: int) -> dict:
+    """Admin menugaskan rujukan UMKM ke installer (syarat installer mengelola perangkat UMKM itu)."""
+    r = client.post(
+        f"{API}/dashboard/leads",
+        json={"umkm_id": umkm_id, "installer_user_id": installer_id, "recommended_kwp": 2.0},
+        headers=admin_headers,
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def test_device_registration_returns_key_once(client, installer_user, umkm_user, db_call, admin_headers):
+    _assign_lead(client, admin_headers, umkm_user.umkm_id, installer_user.id)
     resp = client.post(
         f"{API}/devices",
         json={"device_id": "ESP32-SKH-042", "umkm_id": umkm_user.umkm_id, "firmware_version": "1.2.0"},
@@ -359,3 +371,27 @@ def test_postgres_url_normalized():
     url = normalize_database_url("postgres://u:p@db:5432/waskita")
     assert url.drivername == "postgresql+asyncpg"
     assert normalize_database_url("sqlite:///./x.db").drivername == "sqlite+aiosqlite"
+
+
+def test_installer_scoped_to_assigned_umkm(client, make_user, make_device, admin_headers):
+    """Installer tidak boleh mendaftarkan/melihat/memutar key perangkat UMKM yang tidak ditugaskan."""
+    inst = make_user("installer")
+    victim = make_user("umkm", consent_share_data=False)
+    dev = make_device(victim.umkm_id)
+
+    assert client.post(f"{API}/devices", json={"device_id": "ESP32-BAJAK-1", "umkm_id": victim.umkm_id},
+                       headers=inst.headers).status_code == 403
+    assert client.post(f"{API}/devices/{dev.device_id}/rotate-key", headers=inst.headers).status_code == 403
+    listed = client.get(f"{API}/devices", headers=inst.headers).json()
+    assert dev.device_id not in {d["device_id"] for d in listed}
+    assert client.get(f"{API}/devices", params={"umkm_id": victim.umkm_id}, headers=inst.headers).status_code == 403
+    # key lama tetap berlaku
+    assert client.get(f"{API}/devices/whoami", headers=dev.headers).status_code == 200
+
+    # setelah ditugaskan admin, installer boleh mengelola
+    _assign_lead(client, admin_headers, victim.umkm_id, inst.id)
+    r = client.post(f"{API}/devices/{dev.device_id}/rotate-key", headers=inst.headers)
+    assert r.status_code == 200
+    assert client.get(f"{API}/devices/whoami", headers=dev.headers).status_code == 401
+    listed = client.get(f"{API}/devices", headers=inst.headers).json()
+    assert dev.device_id in {d["device_id"] for d in listed}

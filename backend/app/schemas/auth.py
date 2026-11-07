@@ -13,6 +13,15 @@ RoleName = Literal["umkm", "disperinaker", "installer", "bank", "admin"]
 _USERNAME_RE = re.compile(r"^[a-z0-9_.-]{3,64}$")
 _PHONE_RE = re.compile(r"^62\d{8,13}$")
 
+CONSENT_SHARE_DATA_TEXT = (
+    "Setuju data energi (kWh per jam & per mesin) dibagikan ke installer dan bank/koperasi mitra "
+    "untuk penawaran PLTS & kredit hijau. Bisa dicabut kapan saja."
+)
+CONSENT_SHARE_GOV_TEXT = (
+    "Setuju nama usaha & ringkasan energi (agregat, tanpa data per jam) ditampilkan ke Disperinaker "
+    "untuk program pembinaan. Bisa dicabut kapan saja."
+)
+
 
 def normalize_whatsapp(value: Optional[str]) -> Optional[str]:
     """Normalisasi nomor WA Indonesia ke format 62xxxxxxxxxx."""
@@ -66,9 +75,8 @@ class UMKMCreate(BaseModel):
     kecamatan: str = Field("", max_length=80, examples=["Grogol"])
     phone_whatsapp: Optional[str] = Field(None, examples=["081234567890"])
     connected_power_va: Optional[int] = Field(None, gt=0, le=10_000_000, examples=[5500])
-    consent_share_data: bool = Field(
-        False, description="Setuju data energi dibagikan ke bank/installer mitra untuk penawaran PLTS & kredit hijau."
-    )
+    consent_share_data: bool = Field(False, description=CONSENT_SHARE_DATA_TEXT)
+    consent_share_gov: bool = Field(False, description=CONSENT_SHARE_GOV_TEXT)
 
     @field_validator("phone_whatsapp")
     @classmethod
@@ -87,7 +95,8 @@ class RegisterRequest(_UsernameMixin, _PasswordMixin):
     kecamatan: str = Field("", max_length=80)
     phone_whatsapp: Optional[str] = None
     connected_power_va: Optional[int] = Field(None, gt=0, le=10_000_000)
-    consent_share_data: bool = False
+    consent_share_data: bool = Field(False, description=CONSENT_SHARE_DATA_TEXT)
+    consent_share_gov: bool = Field(False, description=CONSENT_SHARE_GOV_TEXT)
 
     @field_validator("phone_whatsapp")
     @classmethod
@@ -103,6 +112,7 @@ class RegisterRequest(_UsernameMixin, _PasswordMixin):
             phone_whatsapp=self.phone_whatsapp,
             connected_power_va=self.connected_power_va,
             consent_share_data=self.consent_share_data,
+            consent_share_gov=self.consent_share_gov,
         )
 
 
@@ -139,7 +149,22 @@ class UMKMOut(BaseModel):
     pv_kwp: float
     battery_kwh: float
     consent_share_data: bool
+    consent_share_gov: bool = False
+    consent_updated_at: Optional[datetime] = None
+    phone_verified: bool = False
+    whatsapp_opt_out: bool = False
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _phone_verified(cls, data):
+        # Dari ORM: phone_verified = phone_verified_at terisi (kode OTP tidak pernah diekspos).
+        if not isinstance(data, dict) and hasattr(data, "phone_verified_at"):
+            return {
+                **{k: getattr(data, k, None) for k in cls.model_fields if k != "phone_verified"},
+                "phone_verified": getattr(data, "phone_verified_at", None) is not None,
+            }
+        return data
 
 
 class UserOut(BaseModel):

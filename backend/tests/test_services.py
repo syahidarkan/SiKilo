@@ -307,6 +307,17 @@ def test_scorecard_daya_tersambung_tidak_diketahui_dan_pbp_tak_balik_modal():
     assert br["payback_period_score"] == 0.0 and br["npv_score"] == 0.0
     assert card["bankability_score"]["category_code"] == "perlu_kajian"
     assert any("Daya tersambung" in n for n in card["notes"])
+    # Kepatuhan yang tidak diperiksa harus null, bukan false (dibaca bank lewat JSON).
+    habit = card["plts_recommendation"]["current_habit"]
+    assert habit["permen_esdm_2_2024_compliant"] is None
+    assert habit["kwp_within_connected_power"] is None
+
+
+def test_scorecard_kepatuhan_ikut_regulatory_checks():
+    card = generate_bankability_scorecard("C", "", "x", _sizing(), 1_000_000)
+    habit = card["plts_recommendation"]["current_habit"]
+    assert habit["permen_esdm_2_2024_compliant"] is True
+    assert habit["kwp_within_connected_power"] is True
 
 
 def test_scorecard_pdf_lengkap():
@@ -389,9 +400,20 @@ def _seed_ledger(db_call, umkm_id: int, days: int, end: date | None = None):
     db_call(write)
 
 
+def _verify_phone(db_call, umkm_id: int):
+    from app.models.types import utcnow
+
+    async def write(s):
+        umkm = await s.get(UMKM, umkm_id)
+        umkm.phone_verified_at = utcnow()
+        await s.commit()
+    db_call(write)
+
+
 def test_job_harian_simpan_plan_dan_log(client, db_call, make_user):
     u = make_user("umkm")
     _add_profiles(db_call, u.umkm_id)
+    _verify_phone(db_call, u.umkm_id)
     target = _today() + timedelta(days=1)
 
     summary = client.portal.call(lambda: jobs.run_daily_briefs(target, solver="greedy"))
@@ -430,6 +452,7 @@ def test_job_harian_pakai_pv_umkm(client, db_call, make_user):
 def test_job_mingguan(client, db_call, make_user):
     u = make_user("umkm")
     _seed_ledger(db_call, u.umkm_id, days=14)
+    _verify_phone(db_call, u.umkm_id)
     summary = client.portal.call(lambda: jobs.run_weekly_notas())
     mine = [r for r in summary["results"] if r["umkm_id"] == u.umkm_id]
     assert mine and mine[0]["status"] == "skipped"
@@ -460,9 +483,21 @@ def test_endpoint_brief_auth_dan_akses(client, db_call, make_user, admin_headers
     assert r.status_code == 200 and r.json()["plan_id"]
 
 
-def test_endpoint_send_now(client, db_call, make_user, bank_user):
+def test_endpoint_send_now(client, db_call, make_user, bank_user, monkeypatch):
     u = make_user("umkm")
     _add_profiles(db_call, u.umkm_id, n=1)
+    # Nomor belum diverifikasi → ditolak.
+    r = client.post("/api/v1/agent/whatsapp/send-now", json={"kind": "daily", "solver": "greedy"}, headers=u.headers)
+    assert r.status_code == 409 and "diverifikasi" in r.json()["detail"]
+    # Verifikasi OTP (WHATSAPP_PROVIDER=none di tes → kode dikembalikan sebagai dev_code).
+    r = client.post("/api/v1/umkm/me/phone/request-otp", headers=u.headers)
+    assert r.status_code == 200, r.text
+    code = r.json()["dev_code"]
+    assert code and len(code) == 6
+    wrong = "000000" if code != "000000" else "111111"
+    assert client.post("/api/v1/umkm/me/phone/verify", json={"code": wrong}, headers=u.headers).status_code == 400
+    r = client.post("/api/v1/umkm/me/phone/verify", json={"code": code}, headers=u.headers)
+    assert r.status_code == 200 and r.json()["phone_verified"] is True
     r = client.post("/api/v1/agent/whatsapp/send-now", json={"kind": "daily", "solver": "greedy"}, headers=u.headers)
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "skipped" and r.json()["message_log_id"]
@@ -473,6 +508,24 @@ def test_endpoint_send_now(client, db_call, make_user, bank_user):
 
     no_phone = make_user("umkm", phone_whatsapp=None)
     r = client.post("/api/v1/agent/whatsapp/send-now", json={}, headers=no_phone.headers)
+    assert r.status_code == 409
+
+    # Batas harian: hitung pesan sent/failed hari ini (provider palsu "failed" agar tercatat).
+    from app.services import whatsapp_sender
+
+    async def fake_send(phone, body, **kw):
+        return whatsapp_sender.SendResult("failed", "fonnte", "uji")
+
+    monkeypatch.setattr(jobs, "send_whatsapp", fake_send)
+    monkeypatch.setattr(settings, "whatsapp_send_now_max_per_day", 1)
+    r = client.post("/api/v1/agent/whatsapp/send-now", json={"kind": "weekly"}, headers=u.headers)
+    assert r.status_code == 200 and r.json()["status"] == "failed"
+    r = client.post("/api/v1/agent/whatsapp/send-now", json={"kind": "weekly"}, headers=u.headers)
+    assert r.status_code == 429
+
+    # Berhenti berlangganan → tidak dikirim.
+    assert client.patch("/api/v1/umkm/me", json={"whatsapp_opt_out": True}, headers=u.headers).status_code == 200
+    r = client.post("/api/v1/agent/whatsapp/send-now", json={"kind": "daily", "solver": "greedy"}, headers=u.headers)
     assert r.status_code == 409
 
 
@@ -514,6 +567,7 @@ def test_endpoint_scorecard_dari_db(client, db_call, make_user, monkeypatch):
     def fake_compare(jobs_list, target_pct, info):
         calls["target_pct"] = target_pct
         calls["n_jobs"] = len(jobs_list)
+        calls["baseload_w"] = info.get("baseload_w")
         return {"target_monthly_savings_idr": 600_000, "min_kwp_habit": 4.0, "min_kwp_agent": 3.5,
                 "kwp_reduction": 0.5, "capex_reduction_idr": 5_250_000, "headline": "uji"}
 
@@ -528,11 +582,15 @@ def test_endpoint_scorecard_dari_db(client, db_call, make_user, monkeypatch):
     assert r.status_code == 200, r.text
     card = r.json()
     assert calls["days"] == 10 and calls["va"] == 5500 and calls["n_jobs"] == 2
+    assert calls["baseload_w"] == pytest.approx(300.0)  # median terukur 0,3 kWh/jam, bukan default 800 W
     assert calls["target_pct"] == pytest.approx(7_400_000 / 30_000_000 * 100, abs=0.01)
     assert card["audit_period"]["days"] == 10
     assert card["data_sources"]["load_profile"] == "terukur"
     assert {u["label"] for u in card["machine_usage"]} >= {"Setrika Uap", "Baseload / Background"}
     assert card["plts_recommendation"]["agent_compare"]["min_kwp_agent"] == 3.5
+    assert card["plts_recommendation"]["agent_compare"]["included_in_score"] is False
+    assert "300 W" in card["plts_recommendation"]["agent_compare"]["basis"]
+    assert card["report_meta"]["data_verified_by_waskita"] is True
 
     r = client.get("/api/v1/agent/reports/bankability-scorecard.pdf", headers=owner.headers)
     assert r.status_code == 200 and r.content.startswith(b"%PDF")
