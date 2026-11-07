@@ -30,12 +30,13 @@ RUN groupadd --system waskita \
 
 USER waskita
 
-EXPOSE 8000
+ENV PORT=8000
+EXPOSE $PORT
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"
+    CMD python -c "import urllib.request,sys,os; p=os.environ.get('PORT','8000'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{p}/health', timeout=4).status == 200 else 1)"
 
 # SATU worker: detektor NILM per perangkat dan penjadwal APScheduler
 # menyimpan state di memori proses. Lebih dari satu worker akan memecah
 # state tersebut (event ON/OFF hilang, pesan WhatsApp terkirim ganda).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--proxy-headers"]
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers
