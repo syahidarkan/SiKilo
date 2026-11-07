@@ -63,27 +63,6 @@
   font-weight: 500;
   color: var(--metal-mid);
 }
-.hl {
-  position: relative;
-  display: inline-block;
-  color: var(--eco-dark);
-}
-.hl::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.05em;
-  height: 0.11em;
-  border-radius: 99px;
-  background: var(--solar-primary);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s;
-}
-.rv-in .hl::after {
-  transform: scaleX(1);
-}
 @media (max-width: 880px) {
   .sh { grid-template-columns: minmax(0, 1fr); }
   .sh-lead { justify-self: start; }
@@ -225,3 +204,20 @@
 .sf-event { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
 .sf-logo { display: inline-flex; align-items: center; }
 .sf-logo img { height: 36px; width: auto; display: block; }
+
+/* ── FAQ: pita hijau (sama di mode terang dan gelap) ─────────── */
+.faq-band {
+  background: linear-gradient(180deg, #176a3f 0%, #115232 100%);
+  --metal-dark: #ffffff;
+  --metal-mid: rgba(255, 255, 255, 0.82);
+  --border-soft: rgba(255, 255, 255, 0.22);
+  --border-medium: rgba(255, 255, 255, 0.34);
+  --bg-surface: rgba(255, 255, 255, 0.12);
+  --bg-surface-hover: rgba(255, 255, 255, 0.2);
+  --eco-dark: #8cf2bc;
+  --solar-primary: #ffb35c;
+}
+.faq-band .faq-q[aria-expanded='true'] { background: rgba(255, 255, 255, 0.26); border-color: rgba(255, 255, 255, 0.4); }
+.faq-band .faq-msg p { background: #f2fbf5; color: #0f2a1b; }
+.faq-band .faq-rest .faq-msg p { background: transparent; color: rgba(255, 255, 255, 0.85); border-color: rgba(255, 255, 255, 0.4); }
+.faq-band .faq-dots i { background: #0f2a1b; }

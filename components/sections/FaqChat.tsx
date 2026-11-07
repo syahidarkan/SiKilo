@@ -106,7 +106,7 @@ export default function FaqChat() {
   const toggle = (i: number) => setOpenIdx((cur) => (cur === i ? null : i));
 
   return (
-    <section id="faq" ref={sectionRef} className="sheet-band" aria-labelledby="h-faq">
+    <section id="faq" ref={sectionRef} className="sheet-band faq-band" aria-labelledby="h-faq">
       <div className="sheet-w">
         <div className="grid md:grid-cols-[1fr_1.5fr] gap-12 md:gap-20 items-start">
           {/* Left - intro */}

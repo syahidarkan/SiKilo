@@ -205,7 +205,7 @@ export default function SimulatorSection() {
         <SectionHead
           n="02"
           label="Simulator"
-          title={<>Berapa kapasitas PLTS yang <span className="hl">pas</span> untuk usaha Anda?</>}
+          title="Berapa kapasitas PLTS yang pas untuk usaha Anda?"
           lead="Ceritakan usaha Anda dengan kata-kata sendiri, atau pilih langsung dari pilihan di bawah. Perkiraannya langsung muncul."
         />
 
