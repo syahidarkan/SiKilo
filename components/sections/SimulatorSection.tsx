@@ -208,9 +208,6 @@ export default function SimulatorSection() {
 
         <Reveal delay={80}>
           <div className="sim-wrap">
-            <div className="sim-pet" aria-hidden="true">
-              <KiloAvatar />
-            </div>
             <div className="sim-composer">
               <div className="relative">
                 <label htmlFor="sim-text" className="sr-only">Ceritakan usahamu</label>

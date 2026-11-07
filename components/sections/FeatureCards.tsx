@@ -47,7 +47,7 @@ const CARDS: Card[] = [
     front: 'Kenali setiap mesin yang boros daya, tanpa buka kabel.',
     back: (on) => (
       <div className="text-left w-full">
-        {backTitle('NILM Signal Fingerprint')}
+        {backTitle('Contoh: sidik jari beban')}
         <div className="space-y-2.5">
           {([['Kompresor Freezer', 85, '#FECACA'], ['Setrika Uap', 62, '#FED7AA'], ['Mesin Cuci', 48, '#BFDBFE'], ['Lampu LED', 12, '#BBF7D0']] as const).map(
             ([label, pct, color], i) => (
@@ -83,7 +83,7 @@ const CARDS: Card[] = [
     front: 'Jadwalkan mesin berat saat matahari sedang paling terik.',
     back: (on) => (
       <div className="text-left w-full">
-        {backTitle('Jadwal AI Hari Ini')}
+        {backTitle('Contoh: jadwal hari ini')}
         <div className="space-y-2">
           {([['08.00–10.00', 'Setrika Uap ON', '#FDE68A'], ['10.00–14.00', 'Mesin Cuci + Dryer', '#BBF7D0'], ['14.00–16.00', 'Kompresor Maks', '#BFDBFE'], ['17.00+', 'Mode Hemat', 'rgba(255,255,255,0.65)']] as const).map(
             ([time, act, color], i) => (
@@ -116,10 +116,10 @@ const CARDS: Card[] = [
     back: (on) => (
       <div className="text-left w-full space-y-2">
         <div style={{ opacity: on ? 1 : 0, transform: on ? 'none' : 'translateY(8px)', transition: 'all 0.45s ease 0.35s' }}>
-          <KiloBubble>Matahari terik 10–14. Setrika dan cuci: ON sekarang.</KiloBubble>
+          <KiloBubble>Matahari terik jam 10 sampai 14. Cuci dan setrika bisa dinyalakan sekarang.</KiloBubble>
         </div>
         <div style={{ opacity: on ? 1 : 0, transform: on ? 'none' : 'translateY(8px)', transition: 'all 0.45s ease 0.85s' }}>
-          <KiloBubble>Tagihan pekan ini turun 28%! Hemat Rp340rb.</KiloBubble>
+          <KiloBubble>Contoh pesan: tagihan pekan ini turun dibanding pekan lalu.</KiloBubble>
         </div>
       </div>
     ),
@@ -134,7 +134,7 @@ const CARDS: Card[] = [
     front: 'Dapatkan laporan kelayakan bank dari data energi nyata.',
     back: (on) => (
       <div className="text-left w-full">
-        {backTitle('Energy Credit Scorecard')}
+        {backTitle('Contoh: rapor kelayakan')}
         <div className="space-y-1.5 text-xs">
           {([['Konsumsi Terukur', '482 kWh/bln'], ['PLTS Optimal', '3.2 kWp'], ['Hemat/Tahun', 'Rp17.040.000'], ['PBP', '3.2 tahun'], ['Status Bank', 'LAYAK']] as const).map(
             ([k, v], i) => (
@@ -243,8 +243,8 @@ export default function FeatureCards() {
         <SectionHead
           n="03"
           label="Fitur"
-          title={<>Dari deteksi sampai PLTS, semua di <span className="hl">satu nota</span></>}
-          lead="Empat langkah cerdas efisiensi energi. Balik kartunya untuk mencoba demonya."
+          title="Dari pembacaan beban sampai rapor untuk bank"
+          lead="Empat tahap yang saling menyambung. Balik tiap kartu untuk melihat contoh tampilannya."
         />
 
         <div ref={lineRef} className={`relative fc-line ${hung ? 'hung' : ''}`}>

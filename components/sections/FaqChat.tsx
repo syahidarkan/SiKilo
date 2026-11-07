@@ -7,8 +7,8 @@ import { useGaze, useReducedMotion } from '@/components/hooks';
 
 const FAQS = [
   {
-    q: 'Apa itu WASKITA dan kenapa saya butuh ini?',
-    a: 'WASKITA adalah AI Energy Dispatcher yang membantu usahamu membaca tagihan listrik seperti akuntan, mengelola jadwal mesin seperti manajer, dan menyiapkan rapor kelayakan PLTS untuk bank. Kalau tagihan listrikmu lebih dari Rp500.000/bulan, kamu butuh ini.',
+    q: 'Apa yang dikerjakan WASKITA?',
+    a: 'WASKITA membaca beban tiap mesin dari satu titik ukur, menjadwalkan ulang mesin yang fleksibel ke jam matahari, dan menyusun rapor kelayakan PLTS untuk pengajuan ke bank.',
   },
   {
     q: 'Bagaimana Si Kilo mendeteksi mesin yang boros?',
@@ -16,11 +16,11 @@ const FAQS = [
   },
   {
     q: 'Berapa lama sampai balik modal PLTS?',
-    a: 'Rata-rata UMKM binaan kami mencapai break-even dalam 2.8–4.2 tahun. Dengan AI Dispatcher yang mengoptimalkan pemakaian saat sinar matahari paling terik, payback period bisa lebih pendek 20–30% dibanding instalasi PLTS konvensional.',
+    a: 'Dari simulasi, balik modal sekitar 2,8 sampai 4,2 tahun untuk profil UMKM yang diuji. Ini estimasi dari tiruan digital dan belum diverifikasi di lapangan. Angka untuk usahamu bisa dihitung di simulator.',
   },
   {
     q: 'Apakah datanya bisa dipakai untuk pengajuan pinjaman bank?',
-    a: 'Ya! Energy Credit Scorecard dari WASKITA sudah diformat sesuai standar penilaian kelayakan green financing. Data konsumsi terukur, proyeksi penghematan, dan PBP tersaji dalam laporan yang siap dilampirkan ke Bank BRI, BNI, atau lembaga pembiayaan UMKM lainnya.',
+    a: 'Rapor disusun dari data konsumsi terukur, proyeksi penghematan, dan waktu balik modal, dalam bentuk PDF. Penerimaannya tetap bergantung pada lembaga pembiayaan, dan saat ini belum ada kerja sama resmi dengan bank mana pun.',
   },
 ];
 
@@ -116,7 +116,7 @@ export default function FaqChat() {
               <span>FAQ</span>
             </div>
             <h2 id="h-faq" className="sh-title">
-              Tanya langsung <span className="hl">Si Kilo</span>
+              Tanya langsung Si Kilo
             </h2>
             <p className="sh-lead mt-5" style={{ justifySelf: 'start' }}>
               Klik pertanyaannya, Si Kilo yang jawab. Satu per satu, seperti ngobrol.

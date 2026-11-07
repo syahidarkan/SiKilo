@@ -50,3 +50,8 @@
   .st-rail { display: none; }
   .st-hint { display: none; }
 }
+.st-labels { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.st-tag { position: absolute; left: 0; top: 0; opacity: 0; display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 8px; border-radius: 6px; background: rgba(17, 24, 20, .82); color: #fff; font: 600 11px var(--font-jetbrains-mono), monospace; white-space: nowrap; margin-top: -10px; will-change: transform, opacity; }
+.st-tag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 10px; background: rgba(17, 24, 20, .6); }
+.st-tag i { width: 7px; height: 7px; border-radius: 50%; background: #9ca3af; }
+.st-tag b { font-weight: 700; color: #fff; margin-left: 4px; }
