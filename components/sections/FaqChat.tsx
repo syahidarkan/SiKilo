@@ -8,19 +8,19 @@ import { useGaze, useReducedMotion } from '@/components/hooks';
 const FAQS = [
   {
     q: 'Apa yang dikerjakan WASKITA?',
-    a: 'WASKITA membaca beban tiap mesin dari satu titik ukur, menjadwalkan ulang mesin yang fleksibel ke jam matahari, dan menyusun rapor kelayakan PLTS untuk pengajuan ke bank.',
+    a: 'WASKITA membaca pemakaian listrik tiap mesin dari satu titik ukur, menjadwalkan ulang mesin yang fleksibel ke jam matahari, dan menyusun rapor kelayakan PLTS untuk pengajuan ke bank. Tujuannya sederhana: tagihan Anda lebih ringan dan keputusan memasang PLTS lebih tepat.',
   },
   {
-    q: 'Bagaimana Si Kilo mendeteksi mesin yang boros?',
-    a: 'Si Kilo menggunakan teknologi NILM (Non-Intrusive Load Monitoring), tanpa perlu pasang sensor di tiap mesin. Cukup satu titik pantau di panel utama, Si Kilo "membaca" sidik jari daya setiap mesin dari pola arus listriknya.',
+    q: 'Bagaimana Si Kilo tahu mesin mana yang boros?',
+    a: 'Si Kilo memakai teknologi NILM (Non-Intrusive Load Monitoring). Cukup satu sensor di panel utama, tanpa memasang alat di setiap mesin. Setiap mesin memiliki pola arus yang khas, dan dari pola itulah Si Kilo mengenalinya.',
   },
   {
-    q: 'Berapa lama sampai balik modal PLTS?',
-    a: 'Dari simulasi, balik modal sekitar 2,8 sampai 4,2 tahun untuk profil UMKM yang diuji. Ini estimasi dari tiruan digital dan belum diverifikasi di lapangan. Angka untuk usahamu bisa dihitung di simulator.',
+    q: 'Berapa lama PLTS balik modal?',
+    a: 'Menurut simulasi, balik modal berkisar 2,8 sampai 4,2 tahun untuk profil UMKM yang kami uji. Angka ini perkiraan dari tiruan digital dan belum diverifikasi di lapangan. Untuk angka usaha Anda, silakan coba simulator.',
   },
   {
-    q: 'Apakah datanya bisa dipakai untuk pengajuan pinjaman bank?',
-    a: 'Rapor disusun dari data konsumsi terukur, proyeksi penghematan, dan waktu balik modal, dalam bentuk PDF. Penerimaannya tetap bergantung pada lembaga pembiayaan, dan saat ini belum ada kerja sama resmi dengan bank mana pun.',
+    q: 'Apakah datanya bisa dipakai untuk mengajukan pinjaman bank?',
+    a: 'Rapor disusun dari data konsumsi yang terukur, perkiraan penghematan, dan waktu balik modal, dalam format PDF. Namun, penerimaannya tetap bergantung pada lembaga pembiayaan. Saat ini belum ada kerja sama resmi dengan bank mana pun.',
   },
 ];
 
@@ -119,7 +119,7 @@ export default function FaqChat() {
               Tanya langsung Si Kilo
             </h2>
             <p className="sh-lead mt-5" style={{ justifySelf: 'start' }}>
-              Klik pertanyaannya, Si Kilo yang jawab. Satu per satu, seperti ngobrol.
+              Klik pertanyaannya, lalu Si Kilo yang menjawab. Satu per satu, seperti mengobrol.
             </p>
           </Reveal>
 
@@ -159,7 +159,7 @@ export default function FaqChat() {
                 <div className="faq-ans-in">
                   <div className="faq-msg">
                     <KiloAvatar className="faq-avatar" />
-                    <p>Klik salah satu, nanti Si Kilo yang jawab</p>
+                    <p>Klik salah satu pertanyaan, nanti Si Kilo yang menjawab.</p>
                   </div>
                 </div>
               </div>

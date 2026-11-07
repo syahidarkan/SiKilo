@@ -5,10 +5,10 @@ import { REGISTER_URL } from '@/lib/waskita';
 import Reveal from '@/components/Reveal';
 
 const PRODUCT_LINKS = [
-  { label: 'Nota Listrik Cerdas', href: '#fitur' },
-  { label: 'AI Dispatcher', href: '#fitur' },
-  { label: 'Solar Right-Sizing', href: '#simulator-section' },
-  { label: 'Energy Credit Scorecard', href: '#fitur' },
+  { label: 'Pembacaan beban', href: '#fitur' },
+  { label: 'Penjadwalan mesin', href: '#fitur' },
+  { label: 'Simulator PLTS', href: '#simulator-section' },
+  { label: 'Rapor kelayakan', href: '#fitur' },
 ];
 
 export default function CtaFooter() {
@@ -25,7 +25,7 @@ export default function CtaFooter() {
               Hitung dulu, pasang kemudian.
             </h2>
             <p className="close-lead">
-              Masukkan daya PLN dan mesin di usahamu. Perkiraan ukuran PLTS dan waktu balik modal langsung muncul di simulator.
+              Masukkan daya PLN dan mesin di usaha Anda. Perkiraan ukuran PLTS dan waktu balik modal langsung muncul di simulator.
             </p>
             <div className="bal-cta">
               <a href="#simulator-section" className="bal-btn main">
@@ -38,7 +38,7 @@ export default function CtaFooter() {
                 Daftar dan buka dasbor
               </a>
             </div>
-            <p className="close-note">Masih tahap uji coba di Sukoharjo. Angka di situs ini estimasi, bukan penawaran.</p>
+            <p className="close-note">Program ini masih tahap uji coba di Sukoharjo. Semua angka di situs ini berupa perkiraan, bukan penawaran.</p>
           </Reveal>
         </div>
       </section>
@@ -57,7 +57,7 @@ export default function CtaFooter() {
                   </span>
                 </div>
                 <p className="text-xs leading-relaxed" style={{ color: '#6FA687' }}>
-                  AI Energy Dispatcher &amp; Solar Right-Sizing untuk UMKM Indonesia.
+                  Pengatur energi berbasis AI dan penentu ukuran PLTS untuk UMKM Indonesia.
                 </p>
               </div>
 
@@ -77,7 +77,7 @@ export default function CtaFooter() {
               <div>
                 <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: '#4C9A74' }}>Kemitraan</p>
                 <p className="text-xs leading-relaxed" style={{ color: '#6FA687' }}>
-                  Belum ada MoU resmi. Yang dijajaki: Disperinaker Sukoharjo, UMKM binaan uji coba, dan tenan energi inkubator UNS.
+                  Belum ada MoU resmi. Yang sedang dijajaki: Disperinaker Sukoharjo, UMKM binaan untuk uji coba, dan tenan energi inkubator UNS.
                 </p>
               </div>
             </div>

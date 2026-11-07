@@ -40,16 +40,16 @@ const CARDS: Card[] = [
   {
     id: '01',
     label: 'Tahu',
-    tagline: 'Deteksi mesin boros',
+    tagline: 'Kenali mesin yang boros',
     color: '#DC2626',
     colorBg: '#FEF2F2',
     icon: <Plug size={26} />,
-    front: 'Kenali setiap mesin yang boros daya, tanpa buka kabel.',
+    front: 'Satu sensor di panel sudah cukup untuk melihat mesin mana yang paling banyak menyedot listrik.',
     back: (on) => (
       <div className="text-left w-full">
-        {backTitle('Contoh: sidik jari beban')}
+        {backTitle('Contoh: jejak beban tiap mesin')}
         <div className="space-y-2.5">
-          {([['Kompresor Freezer', 85, '#FECACA'], ['Setrika Uap', 62, '#FED7AA'], ['Mesin Cuci', 48, '#BFDBFE'], ['Lampu LED', 12, '#BBF7D0']] as const).map(
+          {([['Kompresor freezer', 85, '#FECACA'], ['Setrika uap', 62, '#FED7AA'], ['Mesin cuci', 48, '#BFDBFE'], ['Lampu LED', 12, '#BBF7D0']] as const).map(
             ([label, pct, color], i) => (
               <div key={label}>
                 <div className="flex justify-between text-xs mb-1">
@@ -76,16 +76,16 @@ const CARDS: Card[] = [
   {
     id: '02',
     label: 'Atur',
-    tagline: 'Jadwal cerdas AI',
+    tagline: 'Jadwal yang lebih cerdas',
     color: '#C2410C',
     colorBg: '#FFF7ED',
     icon: <Clock size={26} />,
-    front: 'Jadwalkan mesin berat saat matahari sedang paling terik.',
+    front: 'Mesin yang bisa ditunda dijadwalkan ulang ke jam terik, supaya listrik surya langsung terpakai.',
     back: (on) => (
       <div className="text-left w-full">
         {backTitle('Contoh: jadwal hari ini')}
         <div className="space-y-2">
-          {([['08.00–10.00', 'Setrika Uap ON', '#FDE68A'], ['10.00–14.00', 'Mesin Cuci + Dryer', '#BBF7D0'], ['14.00–16.00', 'Kompresor Maks', '#BFDBFE'], ['17.00+', 'Mode Hemat', 'rgba(255,255,255,0.65)']] as const).map(
+          {([['08.00–10.00', 'Setrika uap menyala', '#FDE68A'], ['10.00–14.00', 'Mesin cuci dan pengering', '#BBF7D0'], ['14.00–16.00', 'Kompresor beban penuh', '#BFDBFE'], ['Setelah 17.00', 'Mode hemat', 'rgba(255,255,255,0.65)']] as const).map(
             ([time, act, color], i) => (
               <div
                 key={time}
@@ -108,18 +108,18 @@ const CARDS: Card[] = [
   {
     id: '03',
     label: 'Hemat',
-    tagline: 'Notifikasi WhatsApp',
+    tagline: 'Laporan lewat WhatsApp',
     color: '#15803D',
     colorBg: '#D2F5E1',
     icon: <Smartphone size={26} />,
-    front: 'Rekomendasi harian langsung di WhatsApp grup kamu.',
+    front: 'Rekomendasi harian dan ringkasan penghematan dikirim ke WhatsApp, tanpa perlu membuka aplikasi lain.',
     back: (on) => (
       <div className="text-left w-full space-y-2">
         <div style={{ opacity: on ? 1 : 0, transform: on ? 'none' : 'translateY(8px)', transition: 'all 0.45s ease 0.35s' }}>
-          <KiloBubble>Matahari terik jam 10 sampai 14. Cuci dan setrika bisa dinyalakan sekarang.</KiloBubble>
+          <KiloBubble>Matahari terik pukul 10.00 sampai 14.00. Cuci dan setrika bisa dinyalakan sekarang.</KiloBubble>
         </div>
         <div style={{ opacity: on ? 1 : 0, transform: on ? 'none' : 'translateY(8px)', transition: 'all 0.45s ease 0.85s' }}>
-          <KiloBubble>Contoh pesan: tagihan pekan ini turun dibanding pekan lalu.</KiloBubble>
+          <KiloBubble>Tagihan pekan ini lebih rendah daripada pekan lalu.</KiloBubble>
         </div>
       </div>
     ),
@@ -127,16 +127,16 @@ const CARDS: Card[] = [
   {
     id: '04',
     label: 'Punya PLTS',
-    tagline: 'Rapor kelayakan bank',
+    tagline: 'Rapor untuk bank',
     color: '#B45309',
     colorBg: '#FFF3E0',
     icon: <ClipboardList size={26} />,
-    front: 'Dapatkan laporan kelayakan bank dari data energi nyata.',
+    front: 'Data pemakaian yang terukur disusun menjadi rapor kelayakan PLTS yang bisa Anda lampirkan saat mengajukan pembiayaan.',
     back: (on) => (
       <div className="text-left w-full">
         {backTitle('Contoh: rapor kelayakan')}
         <div className="space-y-1.5 text-xs">
-          {([['Konsumsi Terukur', '482 kWh/bln'], ['PLTS Optimal', '3.2 kWp'], ['Hemat/Tahun', 'Rp17.040.000'], ['PBP', '3.2 tahun'], ['Status Bank', 'LAYAK']] as const).map(
+          {([['Konsumsi terukur', '482 kWh per bulan'], ['PLTS optimal', '3,2 kWp'], ['Hemat per tahun', 'Rp17.040.000'], ['Balik modal', '3,2 tahun'], ['Status kelayakan', 'Layak']] as const).map(
             ([k, v], i) => (
               <div
                 key={k}
@@ -244,7 +244,7 @@ export default function FeatureCards() {
           n="03"
           label="Fitur"
           title="Dari pembacaan beban sampai rapor untuk bank"
-          lead="Empat tahap yang saling menyambung. Balik tiap kartu untuk melihat contoh tampilannya."
+          lead="Empat tahap yang saling menyambung. Balik setiap kartu untuk melihat contoh tampilannya."
         />
 
         <div ref={lineRef} className={`relative fc-line ${hung ? 'hung' : ''}`}>

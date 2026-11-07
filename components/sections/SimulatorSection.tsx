@@ -9,23 +9,26 @@ import { useCountUp, useGaze, useReducedMotion } from '@/components/hooks';
 import { fetchEstimate, type Estimate, type MachineKey } from '@/lib/waskita';
 
 const EXAMPLES = [
-  'Bengkel Konveksi 5.500 VA dengan 2 mesin potong uap dan setrika uap',
-  'Laundry Kiloan 3.500 VA, 3 mesin cuci + dryer',
-  'Toko Kelontong 2.200 VA, freezer + kulkas besar',
-  'Bengkel Las 11.000 VA, kompresor + mesin las MIG',
+  'Bengkel konveksi 5.500 VA dengan 2 mesin potong dan setrika uap',
+  'Laundry kiloan 3.500 VA, 3 mesin cuci dan pengering',
+  'Toko kelontong 2.200 VA, freezer dan kulkas besar',
+  'Bengkel las 11.000 VA, kompresor dan mesin las MIG',
 ];
 
 const POWER_TAGS = ['2.200 VA', '3.500 VA', '5.500 VA', '11.000 VA'] as const;
 const VA: Record<string, number> = { '2.200 VA': 2200, '3.500 VA': 3500, '5.500 VA': 5500, '11.000 VA': 11000 };
 
 const MACHINES: { tag: string; key: MachineKey; keys: RegExp }[] = [
-  { tag: 'Setrika Uap', key: 'setrika_uap', keys: /setrika|uap|boiler/i },
-  { tag: 'Kompresor Angin', key: 'kompresor_angin', keys: /kompresor/i },
-  { tag: 'Oven Pemanas', key: 'oven_pemanas', keys: /oven|pemanas/i },
-  { tag: 'Mesin Cuci Dryer', key: 'mesin_cuci_dryer', keys: /mesin cuci|dryer|laundry/i },
+  { tag: 'Setrika uap', key: 'setrika_uap', keys: /setrika|uap|boiler/i },
+  { tag: 'Kompresor angin', key: 'kompresor_angin', keys: /kompresor/i },
+  { tag: 'Oven pemanas', key: 'oven_pemanas', keys: /oven|pemanas/i },
+  { tag: 'Mesin cuci dan pengering', key: 'mesin_cuci_dryer', keys: /mesin cuci|dryer|pengering|laundry/i },
 ];
 
 /** Reads a plan size and machines out of free text, so the story the owner types actually drives the result. */
+/** Merapikan teks dari backend ke ejaan Indonesia: koma desimal dan tanda hubung. */
+const idText = (t: string) => t.replace(/(\d)\.(\d)(?!\d)/g, '$1,$2').replace(/ — /g, ', ');
+
 function parseProfile(text: string) {
   const m = text.match(/(\d{1,2})[.,]?(\d{3})\s*va\b/i);
   const va = m ? Number(m[1] + m[2]) : null;
@@ -202,15 +205,15 @@ export default function SimulatorSection() {
         <SectionHead
           n="02"
           label="Simulator"
-          title={<>Temukan ukuran PLTS yang <span className="hl">pas</span> untuk usahamu</>}
-          lead="Ceritakan usahamu dengan kata-katamu sendiri, atau pilih langsung. Hasilnya muncul seketika."
+          title={<>Berapa kapasitas PLTS yang <span className="hl">pas</span> untuk usaha Anda?</>}
+          lead="Ceritakan usaha Anda dengan kata-kata sendiri, atau pilih langsung dari pilihan di bawah. Perkiraannya langsung muncul."
         />
 
         <Reveal delay={80}>
           <div className="sim-wrap">
             <div className="sim-composer">
               <div className="relative">
-                <label htmlFor="sim-text" className="sr-only">Ceritakan usahamu</label>
+                <label htmlFor="sim-text" className="sr-only">Ceritakan usaha Anda</label>
                 <textarea
                   id="sim-text"
                   value={text}
@@ -232,7 +235,7 @@ export default function SimulatorSection() {
 
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <span className="sim-lab" style={{ margin: 0 }}>Coba contoh</span>
-                {['Konveksi', 'Laundry', 'Kelontong', 'Bengkel Las'].map((name, i) => (
+                {['Konveksi', 'Laundry', 'Kelontong', 'Bengkel las'].map((name, i) => (
                   <button key={name} type="button" className="sim-chip try" onClick={() => onText(EXAMPLES[i])}>
                     {name}
                   </button>
@@ -242,7 +245,7 @@ export default function SimulatorSection() {
                     className="ml-auto inline-flex items-center gap-1 text-xs font-bold"
                     style={{ color: 'var(--eco-dark)', animation: 'sim-pop 0.35s cubic-bezier(0.2,0.9,0.3,1.2) both' }}
                   >
-                    <Check size={12} strokeWidth={3} /> Terbaca dari ceritamu
+                    <Check size={12} strokeWidth={3} /> Terbaca dari cerita Anda
                   </span>
                 )}
               </div>
@@ -268,7 +271,7 @@ export default function SimulatorSection() {
                   </div>
                 </div>
                 <div role="group" aria-label="Mesin fleksibel">
-                  <span className="sim-lab">Mesin fleksibel (opsional)</span>
+                  <span className="sim-lab">Mesin yang bisa dijadwalkan (opsional)</span>
                   <div className="flex flex-wrap gap-2">
                     {MACHINES.map(({ tag }) => (
                       <button
@@ -294,30 +297,30 @@ export default function SimulatorSection() {
             <div className="faq-msg faq-rest" style={{ paddingTop: 28 }}>
               <KiloAvatar className="faq-avatar" />
               <p className="inline-flex items-center gap-2">
-                <Loader2 size={14} className="animate-spin" /> Si Kilo sedang menghitung dengan tiruan digital WASKITA...
+                <Loader2 size={14} className="animate-spin" /> Si Kilo sedang menghitung dengan tiruan digital WASKITA…
               </p>
             </div>
           ) : result ? (
             <div style={{ animation: 'sim-pop 0.45s cubic-bezier(0.2,0.9,0.3,1.2) both' }}>
               <ul className="sim-nums">
                 <Num
-                  label="Kapasitas PLTS optimal"
+                  label="Kapasitas PLTS yang disarankan"
                   sub={
                     result.estimate?.kwp_without_agent && result.estimate.kwp_reduction_pct
-                      ? `Tanpa jadwal agen: ${result.estimate.kwp_without_agent.toFixed(1)} kWp`
-                      : 'Dihitung setelah jadwal mesin diatur agen'
+                      ? `Tanpa jadwal agen: ${result.estimate.kwp_without_agent.toFixed(1).replace('.', ',')} kWp`
+                      : 'Dihitung setelah agen mengatur jadwal mesin'
                   }
                   accent="var(--eco-dark)"
                   value={result.kwp}
-                  format={(n) => `${n.toFixed(1)} kWp`}
+                  format={(n) => `${n.toFixed(1).replace('.', ',')} kWp`}
                   reduced={reduced}
                 />
                 <Num
-                  label="Estimasi hemat per bulan"
+                  label="Perkiraan hemat per bulan"
                   sub={
                     result.estimate
                       ? `${result.estimate.savings_pct.toFixed(0)}% dari tagihan ±Rp${Math.round(result.estimate.monthly_bill_now_idr).toLocaleString('id-ID')}`
-                      : 'Estimasi kasar (offline)'
+                      : 'Perkiraan kasar (tanpa server)'
                   }
                   accent="var(--solar-dark)"
                   value={result.hemat}
@@ -334,7 +337,7 @@ export default function SimulatorSection() {
                   }
                   accent="var(--metal-dark)"
                   value={result.pbp ?? 0}
-                  format={(n) => (result.pbp != null ? `${n.toFixed(1)} Tahun` : '-')}
+                  format={(n) => (result.pbp != null ? `${n.toFixed(1).replace('.', ',')} tahun` : '-')}
                   reduced={reduced}
                 />
               </ul>
@@ -343,17 +346,17 @@ export default function SimulatorSection() {
                 <p>
                   {result.estimate ? (
                     <>
-                      {result.estimate.headline}{' '}
+                      {idText(result.estimate.headline)}{' '}
                       <span style={{ color: 'var(--metal-mid)' }}>
                         Dihitung tiruan digital WASKITA (cuaca {result.estimate.pv_source.includes('nasa') ? 'NASA POWER' : 'clear-sky'},
-                        tarif {result.estimate.tariff_group}, ekspor ke PLN tidak dihitung) dari profil mesin tipikal. Ini estimasi, bukan penawaran.
+                        tarif {result.estimate.tariff_group}, ekspor ke PLN tidak dihitung) dari profil mesin yang umum. Ini perkiraan, bukan penawaran.
                       </span>
                     </>
                   ) : (
                     <>
                       Untuk {power}
-                      {machines.length > 0 ? ` dengan ${machines.length} mesin fleksibel` : ''}, PLTS sekitar {result.kwp.toFixed(1)} kWp.
-                      Server WASKITA sedang tidak terjangkau, jadi ini estimasi kasar untuk gambaran awal, bukan penawaran.
+                      {machines.length > 0 ? ` dengan ${machines.length} mesin yang bisa dijadwalkan` : ''}, PLTS sekitar {result.kwp.toFixed(1).replace('.', ',')} kWp.
+                      Server WASKITA sedang tidak terjangkau, jadi angka ini hanya perkiraan kasar untuk gambaran awal, bukan penawaran.
                     </>
                   )}
                 </p>
@@ -362,7 +365,7 @@ export default function SimulatorSection() {
           ) : (
             <div className="faq-msg faq-rest" style={{ paddingTop: 28 }}>
               <KiloAvatar className="faq-avatar" />
-              <p>Pilih daya PLN atau tulis ceritamu, nanti Si Kilo yang hitung</p>
+              <p>Pilih daya PLN atau tulis cerita Anda, nanti Si Kilo yang menghitung.</p>
             </div>
           )}
         </div>
