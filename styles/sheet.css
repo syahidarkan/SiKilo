@@ -1,0 +1,283 @@
+/* ═════════════════════════════════════════════════════════════════════════════
+   LEMBAR (di bawah scroll-story): bahasa desain ala EcoPatch.
+   Panel hanya untuk objek, prosa langsung di atas kertas, struktur dari tipografi,
+   garis tipis, dan satu kalimat kunci bergaris aksen.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.sheet {
+  position: relative;
+  background: linear-gradient(180deg, var(--bg-paper) 0%, var(--bg-paper) 40%, #f7efdd 100%);
+}
+.sheet-w {
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: max(20px, env(safe-area-inset-left, 0px)) max(20px, env(safe-area-inset-right, 0px));
+}
+.sheet-band {
+  padding-block: clamp(64px, 9vw, 120px);
+  scroll-margin-top: 72px;
+}
+
+.sh {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 20px clamp(32px, 6vw, 88px);
+  align-items: end;
+}
+.sh-solo {
+  grid-template-columns: minmax(0, 1fr);
+  text-align: center;
+  justify-items: center;
+}
+.sh-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--metal-mid);
+}
+.sh-mark b {
+  color: var(--eco-dark);
+  font-weight: 800;
+}
+.sh-title {
+  margin: 14px 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  text-wrap: balance;
+  color: var(--metal-dark);
+  font-size: clamp(2rem, 4.6vw, 3.5rem);
+}
+.sh-lead {
+  margin: 0;
+  max-width: 38ch;
+  justify-self: end;
+  padding: 0 0 6px 1rem;
+  border-left: 2px solid var(--eco-primary);
+  font-size: clamp(1rem, 1.35vw, 1.15rem);
+  line-height: 1.6;
+  font-weight: 500;
+  color: var(--metal-mid);
+}
+.hl {
+  position: relative;
+  display: inline-block;
+  color: var(--eco-dark);
+}
+.hl::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.05em;
+  height: 0.11em;
+  border-radius: 99px;
+  background: var(--solar-primary);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s;
+}
+.rv-in .hl::after {
+  transform: scaleX(1);
+}
+@media (max-width: 880px) {
+  .sh { grid-template-columns: minmax(0, 1fr); }
+  .sh-lead { justify-self: start; }
+}
+
+/* ── Simulator: composer ala finder EcoPatch ─────────────────── */
+.sim-wrap { position: relative; margin-top: clamp(56px, 7vw, 96px); }
+.sim-pet {
+  position: absolute;
+  right: clamp(0px, 0.5vw, 8px);
+  bottom: calc(100% - 18px);
+  width: clamp(92px, 11vw, 132px);
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.sim-wrap:focus-within .sim-pet { transform: translateY(-6px) rotate(-3deg); }
+.sim-pet .kilo-av { width: 100%; height: auto; display: block; }
+.sim-composer {
+  background: #fff;
+  border: 2px solid rgba(31, 41, 55, 0.14);
+  border-radius: 32px;
+  padding: 20px clamp(18px, 3vw, 30px) 22px;
+  box-shadow: 0 14px 34px -18px rgba(75, 85, 99, 0.35);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.sim-composer:focus-within {
+  border-color: var(--eco-dark);
+  box-shadow: 0 0 0 5px rgba(47, 191, 113, 0.22);
+}
+.sim-field {
+  width: 100%;
+  background: transparent;
+  resize: none;
+  font: 600 clamp(1.05rem, 1.8vw, 1.3rem) / 1.45 var(--font-body);
+  color: var(--metal-dark);
+}
+.sim-field:focus { outline: none; }
+.sim-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px clamp(28px, 5vw, 64px);
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-soft);
+}
+.sim-lab {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--metal-mid);
+}
+.sim-chip {
+  font: 600 14px/1 var(--font-body);
+  color: var(--metal-dark);
+  background: transparent;
+  border: 1.5px solid rgba(31, 41, 55, 0.18);
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
+}
+.sim-chip:hover { border-color: var(--eco-dark); }
+.sim-chip:active { transform: scale(0.96); }
+.sim-chip[aria-pressed='true'] { background: var(--eco-dark); border-color: var(--eco-dark); color: #fff; }
+.sim-chip.pw[aria-pressed='true'] { background: var(--solar-primary); border-color: var(--solar-primary); color: #3b2300; }
+.sim-chip.try { border-style: dashed; }
+.sim-chip:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
+
+.sim-nums {
+  list-style: none;
+  margin: clamp(36px, 5vw, 56px) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.8rem clamp(24px, 4vw, 56px);
+}
+.sim-num { border-top: 1px solid var(--border-medium); padding-top: 14px; }
+.sim-num .l { display: block; font-size: 0.82rem; font-weight: 700; color: var(--metal-dark); }
+.sim-num b {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-size: clamp(1.9rem, 3.8vw, 2.8rem);
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.sim-num .s { display: block; margin-top: 6px; font-size: 0.78rem; color: var(--metal-mid); }
+.sim-num .bd {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 8px;
+  font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 99px;
+  background: var(--eco-light); color: var(--eco-dark);
+}
+@media (max-width: 760px) { .sim-nums { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Kabel listrik yang tumbuh di tepi kiri (padanan "vine") ─── */
+.pvine { display: none; }
+@media (min-width: 1240px) {
+  .pvine { display: block; position: sticky; top: 0; height: 0; z-index: 4; pointer-events: none; }
+  .pvine-in { position: absolute; left: 6px; top: 0; width: min(46px, 6vh); height: 100vh; }
+  .pvine-in svg { width: 100%; height: 100%; display: block; overflow: visible; }
+}
+.pv-track { fill: none; stroke: rgba(138, 106, 74, 0.28); stroke-width: 1.6; stroke-dasharray: 2 5; stroke-linecap: round; }
+.pv-wire { fill: none; stroke: var(--metal-dark); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.pv-bulb { fill: var(--border-medium); transform-box: fill-box; transform-origin: 50% 50%; transform: scale(0.6); transition: transform 0.5s cubic-bezier(0.3, 1.7, 0.5, 1), fill 0.3s ease; }
+.pv-bulb.on { fill: var(--solar-primary); transform: scale(1); filter: drop-shadow(0 0 5px rgba(255, 158, 44, 0.8)); }
+.pv-bulb.top.on { fill: var(--eco-primary); filter: drop-shadow(0 0 6px rgba(47, 191, 113, 0.9)); }
+
+/* ── Penutup: matahari terbit di atas atap ruko ──────────────── */
+.bal {
+  --wh: clamp(36px, 5vw, 64px);
+  --fh: clamp(150px, 20vw, 300px);
+  position: relative;
+  min-height: calc(clamp(700px, 78vw, 940px) + var(--wh));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(100px, 12vw, 170px) 20px var(--wh);
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(253, 233, 192, 0) 0%, rgba(253, 233, 192, 0.55) 10%, #fde9c0 30%, #fdd9a0 62%, #fcc885 100%) top / 100% calc(100% - var(--wh)) no-repeat,
+    #ecd9aa;
+}
+.bal-sun {
+  position: absolute; left: 50%; bottom: calc(var(--wh) + var(--fh) + clamp(10px, 2vw, 30px));
+  width: clamp(260px, 36vw, 480px); aspect-ratio: 1; margin-left: calc(clamp(260px, 36vw, 480px) / -2);
+  transform: translateY(90%) translateX(calc(var(--px, 0) * 10px));
+  transition: transform 2.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.bal.in .bal-sun { transform: translateY(34%) translateX(calc(var(--px, 0) * 10px)); }
+.bal-sun i {
+  display: block; width: 100%; height: 100%; border-radius: 50%;
+  background: radial-gradient(circle, #fff6c9 0 34%, #ffd871 35% 56%, rgba(255, 200, 90, 0.45) 57% 72%, rgba(255, 200, 90, 0.16) 73% 86%, transparent 87%);
+  animation: bal-glow 5s ease-in-out infinite;
+}
+@keyframes bal-glow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.bal-clouds { position: absolute; inset: 0 0 auto 0; width: 100%; height: 46%; pointer-events: none; overflow: visible; }
+.bal-clouds .c1 { animation: bal-drift 60s linear infinite alternate; }
+.bal-clouds .c2 { animation: bal-drift 80s linear infinite alternate-reverse; }
+@keyframes bal-drift { from { transform: translateX(-40px); } to { transform: translateX(90px); } }
+.bal-sky {
+  position: absolute; left: -3%; width: 106%; height: clamp(190px, 24vw, 330px);
+  bottom: calc(var(--wh) + var(--fh) * 0.17);
+  transition: transform 0.5s ease-out;
+}
+.bal-sky.far { opacity: 0.75; bottom: calc(var(--wh) + var(--fh) * 0.17 + 14px); transform: translateX(calc(var(--px, 0) * -4px)); }
+.bal-sky.near { transform: translateX(calc(var(--px, 0) * -10px)); }
+.bal-copy { position: relative; z-index: 3; max-width: 46rem; }
+.bal-copy h2 {
+  margin: 14px auto 0; max-width: 16ch; font-family: var(--font-display); font-weight: 800;
+  letter-spacing: -0.03em; line-height: 1.03; text-wrap: balance; color: var(--metal-dark);
+  font-size: clamp(2.3rem, 6vw, 4.8rem);
+}
+.bal-copy h2 em { font-style: normal; color: var(--eco-dark); }
+.bal-copy p { margin: 18px auto 0; max-width: 44ch; font-size: 1.08rem; color: #5a4a2c; }
+.bal-cta { display: flex; flex-wrap: wrap; gap: 12px 16px; justify-content: center; margin-top: 28px; }
+.bal-btn {
+  display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 13px 24px;
+  font: 800 15px/1 var(--font-body); text-decoration: none; border: 2px solid transparent;
+  transition: transform 0.15s ease, filter 0.15s ease, border-color 0.15s ease;
+}
+.bal-btn:active { transform: scale(0.96); }
+.bal-btn:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 3px; }
+.bal-btn.main { background: var(--metal-dark); color: #fff; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.14); }
+.bal-btn.main:hover { filter: brightness(1.2); }
+.bal-btn.line { background: transparent; color: var(--metal-dark); border-color: rgba(31, 41, 55, 0.3); }
+.bal-btn.line:hover { border-color: var(--eco-dark); }
+.bal-copy .bal-note { margin-top: 22px; font-size: 0.8rem; color: #7a6740; }
+.bal-floor { position: absolute; left: 0; bottom: var(--wh); width: 100%; height: var(--fh); z-index: 4; display: block; }
+.bal-panel { transform-box: fill-box; transform-origin: 50% 100%; transform: scale(0); transition: transform 1.1s cubic-bezier(0.34, 1.56, 0.64, 1) var(--g, 0s); }
+.bal.in .bal-panel { transform: scale(1); }
+.bal-kilo {
+  position: absolute; z-index: 5; left: 50%; bottom: calc(var(--wh) + var(--fh) * 0.16);
+  width: clamp(96px, 12vw, 150px); margin-left: calc(clamp(96px, 12vw, 150px) / -2);
+  pointer-events: none; filter: drop-shadow(0 8px 10px rgba(60, 40, 10, 0.18));
+}
+.bal-kilo .kilo-av { width: 100%; height: auto; display: block; }
+.bal::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--wh); z-index: 6; pointer-events: none; background: linear-gradient(180deg, rgba(138, 106, 74, 0.28), rgba(138, 106, 74, 0)); }
+
+/* Footer bergelombang */
+.site-footer { position: relative; z-index: 3; background: #ecd9aa; color: #cfe8d9; overflow: hidden; }
+.sf-wave { position: relative; height: clamp(100px, 15vw, 200px); line-height: 0; }
+.sf-wave svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sf-1 { fill: #bfe8cb; } .sf-2 { fill: #2fbf71; } .sf-3 { fill: #0f2820; }
+.sf-body { background: #0f2820; margin-top: -1px; padding: 8px 0 28px; }
+@media (prefers-reduced-motion: reduce) {
+  .bal-sun, .bal-sun i, .bal-clouds .c1, .bal-clouds .c2, .bal-panel { animation: none !important; transition: none !important; }
+  .bal .bal-panel { transform: scale(1); }
+  .bal .bal-sun { transform: translateY(34%); }
+}

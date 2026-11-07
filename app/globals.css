@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
+@import "../styles/sheet.css";
 
 /* ── Tailwind v4 Theme Extension ───────────────────────────── */
 @theme inline {
@@ -804,7 +805,7 @@ section[id] {
 }
 
 .fc-drop {
-  width: 220px;
+  width: 250px;
   max-width: 100%;
 }
 

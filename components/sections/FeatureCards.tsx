@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 import { Plug, Clock, Smartphone, ClipboardList, Zap, RotateCw } from 'lucide-react';
-import Reveal from '@/components/Reveal';
+import SectionHead from '@/components/SectionHead';
 import KiloAvatar from '@/components/KiloAvatar';
 import { useOnceInView } from '@/components/hooks';
 
@@ -43,7 +43,7 @@ const CARDS: Card[] = [
     tagline: 'Deteksi mesin boros',
     color: '#DC2626',
     colorBg: '#FEF2F2',
-    icon: <Plug size={18} />,
+    icon: <Plug size={26} />,
     front: 'Kenali setiap mesin yang boros daya, tanpa buka kabel.',
     back: (on) => (
       <div className="text-left w-full">
@@ -79,7 +79,7 @@ const CARDS: Card[] = [
     tagline: 'Jadwal cerdas AI',
     color: '#C2410C',
     colorBg: '#FFF7ED',
-    icon: <Clock size={18} />,
+    icon: <Clock size={26} />,
     front: 'Jadwalkan mesin berat saat matahari sedang paling terik.',
     back: (on) => (
       <div className="text-left w-full">
@@ -111,7 +111,7 @@ const CARDS: Card[] = [
     tagline: 'Notifikasi WhatsApp',
     color: '#15803D',
     colorBg: '#D2F5E1',
-    icon: <Smartphone size={18} />,
+    icon: <Smartphone size={26} />,
     front: 'Rekomendasi harian langsung di WhatsApp grup kamu.',
     back: (on) => (
       <div className="text-left w-full space-y-2">
@@ -130,7 +130,7 @@ const CARDS: Card[] = [
     tagline: 'Rapor kelayakan bank',
     color: '#B45309',
     colorBg: '#FFF3E0',
-    icon: <ClipboardList size={18} />,
+    icon: <ClipboardList size={26} />,
     front: 'Dapatkan laporan kelayakan bank dari data energi nyata.',
     back: (on) => (
       <div className="text-left w-full">
@@ -165,7 +165,7 @@ function FlipCard({ card }: { card: Card }) {
   return (
     <div
       className="fc relative cursor-pointer select-none"
-      style={{ perspective: '900px', width: '100%', maxWidth: 220, height: 290 }}
+      style={{ perspective: '900px', width: '100%', maxWidth: 250, height: 340 }}
       onClick={toggle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -184,24 +184,31 @@ function FlipCard({ card }: { card: Card }) {
       >
         {/* Front */}
         <div
-          className="fc-face rounded-2xl p-5 flex flex-col justify-between"
+          className="fc-face rounded-3xl p-5 flex flex-col justify-between"
           style={{ background: '#FFFFFF', border: '1.5px solid var(--border-soft)', boxShadow: '0 8px 24px -8px rgba(31,41,55,0.10)' }}
         >
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-black" style={{ color: 'var(--metal-mid)', letterSpacing: '0.06em' }}>#{card.id}</span>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: card.colorBg, color: card.color }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold" style={{ color: 'var(--metal-mid)', letterSpacing: '0.14em', fontFamily: 'var(--font-mono)' }}>FITUR</span>
+              <span className="text-xs font-bold" style={{ color: 'var(--metal-mid)', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)' }}>#{card.id}</span>
+            </div>
+            <div
+              className="rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: card.colorBg, height: 96, color: card.color }}
+              aria-hidden="true"
+            >
+              <span className="w-14 h-14 rounded-full bg-white flex items-center justify-center" style={{ boxShadow: '0 8px 18px -8px rgba(31,41,55,0.25)' }}>
                 {card.icon}
-              </div>
+              </span>
             </div>
             <p
-              className="font-extrabold text-lg mb-1 leading-tight"
+              className="font-extrabold text-xl mb-1 leading-tight"
               style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
             >
               {card.label}
             </p>
-            <p className="text-xs font-semibold mb-3" style={{ color: card.color }}>{card.tagline}</p>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--metal-mid)' }}>{card.front}</p>
+            <p className="text-xs font-semibold mb-2" style={{ color: card.color }}>{card.tagline}</p>
+            <p className="text-sm leading-relaxed" style={{ color: 'var(--metal-mid)' }}>{card.front}</p>
           </div>
           <div className="flex items-center gap-1.5 mt-2" style={{ color: 'var(--metal-mid)' }}>
             <RotateCw size={12} className="fc-hint" />
@@ -231,27 +238,14 @@ export default function FeatureCards() {
   useOnceInView(lineRef, () => setHung(true), 0.25);
 
   return (
-    <section id="fitur" className="py-24 md:py-32 overflow-hidden" style={{ background: 'var(--bg-surface)' }}>
-      <div className="max-w-5xl mx-auto px-4">
-        <Reveal>
-          <div className="text-center mb-14">
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full"
-              style={{ background: 'var(--eco-light)', color: 'var(--eco-dark)' }}
-            >
-              <Zap size={13} strokeWidth={2.6} /> Fitur
-            </span>
-            <h2
-              className="text-3xl md:text-4xl font-extrabold mb-3 leading-tight"
-              style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
-            >
-              Dari deteksi sampai PLTS,<br className="hidden md:block" /> semua di satu nota
-            </h2>
-            <p className="text-sm md:text-base" style={{ color: 'var(--metal-mid)' }}>
-              Empat langkah cerdas efisiensi energi. Balik kartunya untuk mencoba demonya.
-            </p>
-          </div>
-        </Reveal>
+    <section id="fitur" className="sheet-band overflow-hidden">
+      <div className="sheet-w">
+        <SectionHead
+          n="03"
+          label="Fitur"
+          title={<>Dari deteksi sampai PLTS, semua di <span className="hl">satu nota</span></>}
+          lead="Empat langkah cerdas efisiensi energi. Balik kartunya untuk mencoba demonya."
+        />
 
         <div ref={lineRef} className={`relative fc-line ${hung ? 'hung' : ''}`}>
           <svg className="w-full hidden md:block" viewBox="0 0 900 60" fill="none" preserveAspectRatio="none" style={{ height: 60, marginBottom: -20 }} aria-hidden="true">

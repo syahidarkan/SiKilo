@@ -1,4 +1,5 @@
 import Navbar from '@/components/Navbar';
+import PowerVine from '@/components/PowerVine';
 import StoryScene from '@/components/story/StoryScene';
 import SimulatorSection from '@/components/sections/SimulatorSection';
 import FeatureCards from '@/components/sections/FeatureCards';
@@ -14,17 +15,20 @@ export default function Home() {
         <StoryScene />
       </section>
 
-      {/* ── Simulator Right-Sizing ─────────────────────────────── */}
-      <SimulatorSection />
+      <div className="sheet">
+        <PowerVine />
+        {/* ── Simulator Right-Sizing ─────────────────────────────── */}
+        <SimulatorSection />
 
-      {/* ── Feature Cards (clothesline) ────────────────────────── */}
-      <FeatureCards />
+        {/* ── Feature Cards (clothesline) ────────────────────────── */}
+        <FeatureCards />
 
-      {/* ── FAQ Chat ──────────────────────────────────────────── */}
-      <FaqChat />
+        {/* ── FAQ Chat ──────────────────────────────────────────── */}
+        <FaqChat />
 
-      {/* ── CTA + Footer ──────────────────────────────────────── */}
-      <CtaFooter />
+        {/* ── CTA + Footer ──────────────────────────────────────── */}
+        <CtaFooter />
+      </div>
     </main>
   );
 }

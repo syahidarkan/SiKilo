@@ -106,33 +106,19 @@ export default function FaqChat() {
   const toggle = (i: number) => setOpenIdx((cur) => (cur === i ? null : i));
 
   return (
-    <section
-      id="faq"
-      ref={sectionRef}
-      className="py-24 md:py-32"
-      style={{ background: 'var(--bg-paper)' }}
-      aria-labelledby="h-faq"
-    >
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="grid md:grid-cols-[1fr_1.6fr] gap-12 md:gap-16 items-start">
+    <section id="faq" ref={sectionRef} className="sheet-band" aria-labelledby="h-faq">
+      <div className="sheet-w">
+        <div className="grid md:grid-cols-[1fr_1.5fr] gap-12 md:gap-20 items-start">
           {/* Left - intro */}
           <Reveal className="md:sticky md:top-24">
-            <span
-              className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest uppercase mb-5 px-3 py-1 rounded-full"
-              style={{ background: 'var(--solar-light)', color: 'var(--solar-dark)' }}
-            >
-              FAQ
-            </span>
-            <h2
-              id="h-faq"
-              className="text-3xl md:text-4xl font-extrabold leading-tight mb-4"
-              style={{ color: 'var(--metal-dark)', fontFamily: 'var(--font-display)', letterSpacing: '-0.03em' }}
-            >
-              Tanya langsung
-              <br />
-              Si Kilo
+            <div className="sh-mark">
+              <b>04</b>
+              <span>FAQ</span>
+            </div>
+            <h2 id="h-faq" className="sh-title">
+              Tanya langsung <span className="hl">Si Kilo</span>
             </h2>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--metal-mid)' }}>
+            <p className="sh-lead mt-5" style={{ justifySelf: 'start' }}>
               Klik pertanyaannya, Si Kilo yang jawab. Satu per satu, seperti ngobrol.
             </p>
           </Reveal>
