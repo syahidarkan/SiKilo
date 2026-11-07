@@ -205,19 +205,51 @@
 .sf-logo { display: inline-flex; align-items: center; }
 .sf-logo img { height: 36px; width: auto; display: block; }
 
-/* ── FAQ: pita hijau (sama di mode terang dan gelap) ─────────── */
+/* ── FAQ: pita hijau dengan simulasi chat WhatsApp ───────────── */
 .faq-band {
   background: linear-gradient(180deg, #176a3f 0%, #115232 100%);
   --metal-dark: #ffffff;
   --metal-mid: rgba(255, 255, 255, 0.82);
   --border-soft: rgba(255, 255, 255, 0.22);
   --border-medium: rgba(255, 255, 255, 0.34);
-  --bg-surface: rgba(255, 255, 255, 0.12);
-  --bg-surface-hover: rgba(255, 255, 255, 0.2);
   --eco-dark: #8cf2bc;
-  --solar-primary: #ffb35c;
 }
-.faq-band .faq-q[aria-expanded='true'] { background: rgba(255, 255, 255, 0.26); border-color: rgba(255, 255, 255, 0.4); }
-.faq-band .faq-msg p { background: #f2fbf5; color: #0f2a1b; }
-.faq-band .faq-rest .faq-msg p { background: transparent; color: rgba(255, 255, 255, 0.85); border-color: rgba(255, 255, 255, 0.4); }
-.faq-band .faq-dots i { background: #0f2a1b; }
+.wa {
+  display: flex; flex-direction: column; height: min(600px, 78svh); border-radius: 30px; overflow: hidden;
+  background: #0b141a; border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 40px 70px -30px rgba(0, 0, 0, 0.55), 0 0 0 7px rgba(5, 18, 12, 0.55);
+  font-family: var(--font-body); color: #e9edef;
+}
+.wa-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #1f2c34; }
+.wa-av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #e8f7ee; overflow: hidden; flex: none; }
+.wa-av .kilo-av { width: 32px; height: auto; display: block; margin-top: 3px; }
+.wa-head b { display: block; font-size: 15.5px; font-weight: 700; color: #fff; }
+.wa-head small { display: block; margin-top: 1px; font-size: 12px; color: #8fb4a2; }
+.wa-body {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px;
+  background: radial-gradient(rgba(255, 255, 255, 0.045) 1.2px, transparent 1.2px) 0 0 / 22px 22px, #0b141a;
+  scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.wa-day { align-self: center; padding: 4px 12px; border-radius: 8px; background: #182229; color: #8696a0; font-size: 11.5px; letter-spacing: .04em; }
+.wa-empty { margin: auto; color: #8696a0; font-size: 13.5px; text-align: center; max-width: 22ch; line-height: 1.5; }
+.wa-turn { display: flex; flex-direction: column; gap: 6px; }
+.wa-msg { position: relative; max-width: 86%; padding: 8px 11px 6px; border-radius: 12px; font-size: 14.5px; line-height: 1.52; animation: wa-in .32s cubic-bezier(.2, .9, .3, 1.15) both; }
+.wa-msg p { margin: 0; color: inherit; }
+.wa-msg time { display: block; margin-top: 2px; text-align: right; font-size: 10.5px; color: rgba(233, 237, 239, 0.6); }
+.wa-tick { color: #53bdeb; letter-spacing: -2px; }
+.wa-msg.out { align-self: flex-end; background: #005c4b; border-top-right-radius: 3px; transform-origin: 100% 0; }
+.wa-msg.in { align-self: flex-start; background: #202c33; border-top-left-radius: 3px; transform-origin: 0 0; }
+.wa .faq-dots i { background: #8fa3ad; }
+@keyframes wa-in { from { opacity: 0; transform: translateY(8px) scale(.94); } }
+.wa-foot { padding: 10px 12px 14px; background: #1f2c34; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.wa-hint { display: block; margin: 0 4px 8px; font: 700 10.5px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: #6fcf9a; }
+.wa-chips { display: flex; flex-direction: column; gap: 7px; }
+.wa-chip {
+  text-align: left; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(111, 207, 154, 0.5); background: transparent;
+  color: #bff0d6; font: 600 13.5px/1.35 var(--font-body); cursor: pointer; transition: background .18s ease, transform .15s ease, border-color .18s ease;
+}
+.wa-chip:hover { background: rgba(111, 207, 154, 0.14); border-color: #6fcf9a; }
+.wa-chip:active { transform: scale(.98); }
+.wa-chip:focus-visible { outline: 3px solid var(--solar-primary); outline-offset: 2px; }
+.wa-done { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: #8696a0; padding: 2px 4px; }
+@media (prefers-reduced-motion: reduce) { .wa-msg { animation: none; } }
