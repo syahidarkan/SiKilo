@@ -1,236 +1,142 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Menu, X, Zap } from 'lucide-react';
 
 const NAV_LINKS = [
-  { label: 'Masalah', href: '#masalah' },
-  { label: 'Fitur',   href: '#fitur' },
-  { label: 'Cara Kerja', href: '#cara-kerja' },
-  { label: 'FAQ',     href: '#faq' },
+  { label: 'Cerita', id: 'scroll-track' },
+  { label: 'Simulator', id: 'simulator-section' },
+  { label: 'Fitur', id: 'fitur' },
+  { label: 'FAQ', id: 'faq' },
 ];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [active, setActive] = useState<string>('scroll-track');
+  const headerRef = useRef<HTMLElement>(null);
 
+  // Scrolled state + page progress, in one rAF-throttled listener.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 48);
+    let queued = false;
+    const update = () => {
+      queued = false;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+      headerRef.current?.style.setProperty('--p', p.toFixed(4));
+      setScrolled(window.scrollY > 48);
+    };
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+    update();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, []);
 
+  // Scrollspy: the section crossing the middle of the viewport is the active one.
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActive(e.target.id);
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    NAV_LINKS.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+    return () => io.disconnect();
+  }, []);
+
+  // Escape closes the mobile menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   return (
-    <header
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        transition: 'background 0.25s, box-shadow 0.25s',
-        background: scrolled ? 'rgba(251,249,244,0.92)' : 'rgba(251,249,244,0)',
-        backdropFilter: scrolled ? 'blur(14px)' : 'none',
-        WebkitBackdropFilter: scrolled ? 'blur(14px)' : 'none',
-        boxShadow: scrolled ? '0 1px 0 var(--border-soft)' : 'none',
-      }}
-    >
-      <nav
-        style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          padding: '0 24px',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0,
-        }}
-      >
-        {/* ── Logo ─────────────────────────────────────────────── */}
-        <a
-          href="#top"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 9,
-            textDecoration: 'none',
-            flex: '0 0 auto',
-            marginRight: 32,
-          }}
-        >
-          <span
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 9,
-              background: 'var(--eco-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-              <path d="M9.5 2L4.5 9.5h5.5l-2.5 5.5L14 7.5H8.5L9.5 2z" fill="white" strokeLinejoin="round" />
-            </svg>
+    <header ref={headerRef} className={`nav ${scrolled || menuOpen ? 'nav-solid' : ''}`}>
+      <nav className="nav-bar" aria-label="Navigasi utama">
+        <a href="#scroll-track" className="nav-logo" onClick={() => setMenuOpen(false)}>
+          <span className="nav-mark">
+            <Zap size={17} strokeWidth={2.6} fill="currentColor" />
           </span>
-          <span
-            style={{
-              fontWeight: 800,
-              fontSize: 14,
-              letterSpacing: '-0.02em',
-              color: 'var(--metal-dark)',
-              lineHeight: 1,
-            }}
-          >
-            NOTA<br />
-            <span style={{ color: 'var(--eco-primary)' }}>LISTRIK</span>
+          <span className="nav-word">
+            NOTA
+            <br />
+            <span>LISTRIK</span>
           </span>
         </a>
 
-        {/* ── Nav links — desktop ─────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            gap: 2,
-            flex: 1,
-            justifyContent: 'center',
-          }}
-          className="nav-links-desktop"
-        >
-          {NAV_LINKS.map(({ label, href }) => (
-            <NavLink key={label} label={label} href={href} />
-          ))}
-        </div>
-
-        {/* ── Right actions ─────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto', marginLeft: 32 }}>
-          <a
-            href="#masuk"
-            style={{
-              padding: '7px 15px',
-              borderRadius: 9,
-              fontSize: 14,
-              fontWeight: 600,
-              color: 'var(--metal-mid)',
-              textDecoration: 'none',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)'; (e.currentTarget as HTMLElement).style.color = 'var(--metal-dark)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--metal-mid)'; }}
-          >
-            Masuk
-          </a>
-          <a
-            href="#coba"
-            style={{
-              padding: '8px 18px',
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 700,
-              background: 'var(--eco-primary)',
-              color: '#fff',
-              textDecoration: 'none',
-              transition: 'background 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--eco-hover)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--eco-primary)'; }}
-          >
-            Mulai Gratis
-          </a>
-
-          {/* hamburger — only on mobile */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menu"
-            style={{
-              display: 'none',
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              border: '1.5px solid var(--border-soft)',
-              background: 'transparent',
-              cursor: 'pointer',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 0,
-            }}
-            className="hamburger-btn"
-          >
-            <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
-              <rect y="0" width="18" height="2" rx="1" fill="var(--metal-dark)" />
-              <rect y="5" width="13" height="2" rx="1" fill="var(--metal-dark)" />
-              <rect y="10" width="18" height="2" rx="1" fill="var(--metal-dark)" />
-            </svg>
-          </button>
-        </div>
-      </nav>
-
-      {/* ── Mobile dropdown ─────────────────────────────────────── */}
-      {menuOpen && (
-        <div
-          style={{
-            background: 'rgba(251,249,244,0.97)',
-            backdropFilter: 'blur(14px)',
-            borderTop: '1px solid var(--border-soft)',
-            padding: '8px 24px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-          }}
-        >
-          {NAV_LINKS.map(({ label, href }) => (
+        <div className="nav-links">
+          {NAV_LINKS.map(({ label, id }) => (
             <a
-              key={label}
-              href={href}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                fontSize: 15,
-                fontWeight: 500,
-                color: 'var(--metal-dark)',
-                textDecoration: 'none',
-              }}
+              key={id}
+              href={`#${id}`}
+              className={`nav-link ${active === id ? 'on' : ''}`}
+              aria-current={active === id ? 'true' : undefined}
             >
               {label}
             </a>
           ))}
         </div>
-      )}
 
-      <style>{`
-        @media (max-width: 768px) {
-          .nav-links-desktop { display: none !important; }
-          .hamburger-btn { display: flex !important; }
-        }
-      `}</style>
+        <div className="nav-right">
+          <a href="#simulator-section" className="nav-cta">
+            Coba Simulator
+          </a>
+          <button
+            type="button"
+            className="nav-burger"
+            aria-label={menuOpen ? 'Tutup menu' : 'Buka menu'}
+            aria-expanded={menuOpen}
+            aria-controls="nav-sheet"
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </nav>
+
+      <div id="nav-sheet" className={`nav-sheet ${menuOpen ? 'open' : ''}`}>
+        <div className="nav-sheet-in">
+          {NAV_LINKS.map(({ label, id }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className={`nav-sheet-link ${active === id ? 'on' : ''}`}
+              tabIndex={menuOpen ? 0 : -1}
+              onClick={() => setMenuOpen(false)}
+            >
+              {label}
+            </a>
+          ))}
+          <a
+            href="#simulator-section"
+            className="nav-sheet-cta"
+            tabIndex={menuOpen ? 0 : -1}
+            onClick={() => setMenuOpen(false)}
+          >
+            Coba Simulator
+          </a>
+        </div>
+      </div>
+
+      {/* Page progress, like a meter filling up */}
+      <div className="nav-progress" aria-hidden="true">
+        <i />
+      </div>
     </header>
-  );
-}
-
-function NavLink({ label, href }: { label: string; href: string }) {
-  return (
-    <a
-      href={href}
-      style={{
-        padding: '6px 14px',
-        borderRadius: 8,
-        fontSize: 14,
-        fontWeight: 500,
-        color: 'var(--metal-mid)',
-        textDecoration: 'none',
-        transition: 'background 0.12s, color 0.12s',
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)';
-        (e.currentTarget as HTMLElement).style.color = 'var(--metal-dark)';
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.background = 'transparent';
-        (e.currentTarget as HTMLElement).style.color = 'var(--metal-mid)';
-      }}
-    >
-      {label}
-    </a>
   );
 }

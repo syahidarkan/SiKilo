@@ -1,5 +1,5 @@
 /**
- * Si Kilo — Procedural 3D Mascot
+ * Si Kilo - Procedural 3D Mascot
  * Smart energy meter AI agent built entirely from Three.js primitives.
  * No external 3D model files (.glb/.obj/.gltf) are used.
  */
@@ -342,7 +342,7 @@ export function createMascotKilo(): MascotKilo {
       // Antenna constant bright green
       gemMat.emissiveIntensity = 2.2;
     } else if (mood === 'happy') {
-      // Eyes squint — handled via scaleY in update
+      // Eyes squint - handled via scaleY in update
       state.eyeScaleTarget = 0.6;
       // Jump trigger
       state.jumpVelocity = 0.07;

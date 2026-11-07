@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'NOTA LISTRIK — AI Energy Dispatcher',
+  title: 'NOTA LISTRIK | AI Energy Dispatcher',
   description:
     'Platform AI Energy Dispatcher & Solar Right-Sizing untuk Sentra UMKM Indonesia. UNS Innovation Hackathon 2026, Energy Track.',
 };

@@ -81,7 +81,7 @@ export default function MascotTestPage() {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFBF9F4);
 
-    // Camera — PerspectiveCamera FOV 35, isometric-like position
+    // Camera - PerspectiveCamera FOV 35, isometric-like position
     const camera = new THREE.PerspectiveCamera(
       35,
       canvas.clientWidth / canvas.clientHeight,
@@ -223,7 +223,7 @@ export default function MascotTestPage() {
             className="heading text-2xl"
             style={{ color: 'var(--metal-dark)' }}
           >
-            Si Kilo — Test Bench
+            Si Kilo - Test Bench
           </h1>
         </div>
         <div

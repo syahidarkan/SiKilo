@@ -137,5 +137,5 @@ export function tickParticles(
   const geo = (p as unknown as { _mesh?: THREE.Points })['_mesh'];
   if (geo) return; // handled outside
 
-  // Attribute needs manual update — the scene loop accesses the attribute directly
+  // Attribute needs manual update - the scene loop accesses the attribute directly
 }

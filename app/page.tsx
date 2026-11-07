@@ -7,7 +7,7 @@ import CtaFooter from '@/components/sections/CtaFooter';
 
 export default function Home() {
   return (
-    <main style={{ background: 'var(--bg-paper)' }}>
+    <main id="top" style={{ background: 'var(--bg-paper)' }}>
       <Navbar />
       {/* ── Hero: 500vh sticky scroll-track ─────────────────────── */}
       <div id="scroll-track" className="relative w-full" style={{ height: '500vh' }}>
