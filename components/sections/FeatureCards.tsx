@@ -1,10 +1,9 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Plug, Clock, Smartphone, ClipboardList, Zap, RotateCw } from 'lucide-react';
 import SectionHead from '@/components/SectionHead';
 import KiloAvatar from '@/components/KiloAvatar';
-import { useOnceInView } from '@/components/hooks';
 
 type Card = {
   id: string;
@@ -165,7 +164,7 @@ function FlipCard({ card }: { card: Card }) {
   return (
     <div
       className="fc relative cursor-pointer select-none"
-      style={{ perspective: '900px', width: '100%', maxWidth: 250, height: 340 }}
+      style={{ perspective: '900px', width: '100%', height: 380 }}
       onClick={toggle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -233,12 +232,8 @@ function FlipCard({ card }: { card: Card }) {
 }
 
 export default function FeatureCards() {
-  const lineRef = useRef<HTMLDivElement>(null);
-  const [hung, setHung] = useState(false);
-  useOnceInView(lineRef, () => setHung(true), 0.25);
-
   return (
-    <section id="fitur" className="sheet-band overflow-hidden">
+    <section id="fitur" className="sheet-band">
       <div className="sheet-w">
         <SectionHead
           n="03"
@@ -247,38 +242,10 @@ export default function FeatureCards() {
           lead="Empat tahap yang saling menyambung. Balik setiap kartu untuk melihat contoh tampilannya."
         />
 
-        <div ref={lineRef} className={`relative fc-line ${hung ? 'hung' : ''}`}>
-          <svg className="w-full hidden md:block" viewBox="0 0 900 60" fill="none" preserveAspectRatio="none" style={{ height: 60, marginBottom: -20 }} aria-hidden="true">
-            <path
-              className="fc-rope"
-              d="M 20 20 Q 230 50 450 22 Q 670 -4 880 20"
-              stroke="var(--border-medium)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-              pathLength={1}
-            />
-            {[135, 310, 500, 680].map((x) => (
-              <g key={x}>
-                <rect x={x - 4} y={14} width={8} height={16} rx={2} fill="var(--metal-light)" />
-                <rect x={x - 1.5} y={30} width={3} height={5} rx={1} fill="var(--border-medium)" />
-              </g>
-            ))}
-          </svg>
-
-          <div className="flex flex-wrap justify-center gap-5 md:gap-7 pt-4">
-            {CARDS.map((card, i) => (
-              <div
-                key={card.id}
-                className="fc-drop flex flex-col items-center"
-                style={{ ['--i' as string]: i }}
-              >
-                <div className="fc-swing">
-                  <FlipCard card={card} />
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="fc-grid">
+          {CARDS.map((card) => (
+            <FlipCard key={card.id} card={card} />
+          ))}
         </div>
       </div>
     </section>
